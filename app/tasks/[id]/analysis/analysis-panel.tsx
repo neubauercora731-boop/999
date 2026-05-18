@@ -31,6 +31,11 @@ function emptyAnalysis(): ParsedRequirement {
     materials_needed: [],
     missing_info: [],
     risk_notes: [],
+    task_type: "python_lab",
+    language: "Python",
+    expected_output: "运行代码并保存 stdout/stderr 作为证据。",
+    report_outline: [],
+    assumptions: ["使用内置示例数据"],
   };
 }
 

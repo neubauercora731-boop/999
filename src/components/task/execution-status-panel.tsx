@@ -62,6 +62,61 @@ export function createWaitingExecutionSteps(): ExecutionStep[] {
   }));
 }
 
+export const agentExecutionSteps = [
+  {
+    id: "analyze",
+    title: "正在分析任务",
+    description: "读取原始要求、材料摘要和已确认的结构化信息。",
+  },
+  {
+    id: "plan",
+    title: "正在拆解执行计划",
+    description: "把实验目标拆成代码生成、运行验证和报告整理步骤。",
+  },
+  {
+    id: "code",
+    title: "正在生成实验代码",
+    description: "优先生成单文件 main.py，内置示例数据并保留清晰 stdout。",
+  },
+  {
+    id: "run",
+    title: "正在运行代码",
+    description: "捕获 stdout、stderr、耗时和错误类型。",
+  },
+  {
+    id: "debug",
+    title: "必要时自动修复一次",
+    description: "首次运行失败时，根据错误信息尝试生成完整修复代码。",
+  },
+  {
+    id: "rerun",
+    title: "正在重新运行",
+    description: "如果修复成功，再次运行修复后的代码。",
+  },
+  {
+    id: "report",
+    title: "正在生成报告草稿",
+    description: "报告会引用真实 stdout；无法运行时会写明环境限制。",
+  },
+  {
+    id: "save",
+    title: "正在保存结果",
+    description: "保存代码、运行证据、调试说明和报告草稿。",
+  },
+  {
+    id: "done",
+    title: "已完成",
+    description: "用户可以继续编辑、复制或导出 DOCX。",
+  },
+] as const;
+
+export function createWaitingAgentExecutionSteps(): ExecutionStep[] {
+  return agentExecutionSteps.map((step) => ({
+    ...step,
+    status: "waiting",
+  }));
+}
+
 export function ExecutionStatusPanel({
   title = "AI 执行进度",
   description = "系统会把任务拆成清楚的执行步骤，失败时停在对应步骤并给出原因。",

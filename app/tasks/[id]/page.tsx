@@ -97,7 +97,7 @@ export default async function TaskWorkbenchPage({ params }: PageProps) {
                   <Badge tone={getTaskStatusTone(detail.task.status)}>
                     {getTaskStatusLabel(detail.task.status)}
                   </Badge>
-                  <Badge tone="accent">Python P0 Workbench</Badge>
+                  <Badge tone="accent">Python P1 Agent Workbench</Badge>
                 </div>
                 <div className="space-y-3">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--accent)]">
@@ -107,7 +107,7 @@ export default async function TaskWorkbenchPage({ params }: PageProps) {
                     {detail.task.title}
                   </h1>
                   <p className="max-w-2xl text-sm leading-8 text-[color:var(--muted)] sm:text-base">
-                    生成代码、运行代码、生成报告草稿是三个独立按钮。系统不会自动提交学校系统，也不会伪造截图。
+                    支持一键 Agent 执行流：生成代码、运行验证、失败后自动修复一次，并基于真实运行结果整理报告草稿。
                   </p>
                 </div>
               </div>

@@ -1,5 +1,11 @@
 import { clsx, type ClassValue } from "clsx";
 
+import {
+  AGENT_ERROR_CODE,
+  AGENT_ERROR_MESSAGES,
+  AgentWorkflowError,
+} from "@/lib/agent/errors";
+
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
 }
@@ -12,6 +18,10 @@ type ErrorLikeWithStatus = {
 };
 
 export function toErrorMessage(error: unknown) {
+  if (error instanceof AgentWorkflowError) {
+    return error.message || AGENT_ERROR_MESSAGES[error.code];
+  }
+
   if (error instanceof Error) {
     return error.message;
   }
@@ -27,8 +37,16 @@ export function toUserFriendlyErrorMessage(
   error: unknown,
   fallbackMessage = "操作失败，请稍后重试。",
 ) {
+  if (error instanceof AgentWorkflowError) {
+    return error.message || AGENT_ERROR_MESSAGES[error.code];
+  }
+
   const rawMessage = toErrorMessage(error);
   const message = rawMessage.toLowerCase();
+
+  if (message in AGENT_ERROR_MESSAGES) {
+    return AGENT_ERROR_MESSAGES[message as keyof typeof AGENT_ERROR_MESSAGES];
+  }
 
   if (
     message.includes("unauthorized") ||
@@ -67,7 +85,7 @@ export function toUserFriendlyErrorMessage(
     message.includes("parse") ||
     message.includes("invalid format")
   ) {
-    return "AI 返回格式异常，请重新生成一次。";
+    return AGENT_ERROR_MESSAGES[AGENT_ERROR_CODE.JSON_PARSE_FAILED];
   }
 
   if (
@@ -76,11 +94,23 @@ export function toUserFriendlyErrorMessage(
     message.includes("超时") ||
     message.includes("死循环")
   ) {
-    return "代码运行超时，可能存在死循环或任务过长。";
+    return AGENT_ERROR_MESSAGES[AGENT_ERROR_CODE.CODE_RUN_TIMEOUT];
   }
 
-  if (message.includes("暂不支持 python") || message.includes("python 运行，请复制代码")) {
-    return rawMessage;
+  if (
+    message.includes("暂不支持真实 python") ||
+    message.includes("env_not_supported") ||
+    message.includes("后续接入 worker")
+  ) {
+    return AGENT_ERROR_MESSAGES[AGENT_ERROR_CODE.ENV_NOT_SUPPORTED];
+  }
+
+  if (
+    message.includes("危险操作") ||
+    message.includes("security_blocked") ||
+    message.includes("阻止运行")
+  ) {
+    return AGENT_ERROR_MESSAGES[AGENT_ERROR_CODE.CODE_SECURITY_BLOCKED];
   }
 
   if (
@@ -89,13 +119,17 @@ export function toUserFriendlyErrorMessage(
     message.includes("spawn") ||
     message.includes("运行失败")
   ) {
-    return "代码运行失败，请查看错误信息。";
+    return AGENT_ERROR_MESSAGES[AGENT_ERROR_CODE.CODE_RUN_FAILED];
   }
 
   return rawMessage === "Unknown error" ? fallbackMessage : rawMessage || fallbackMessage;
 }
 
 export function getErrorStatus(error: unknown, fallbackStatus = 500) {
+  if (error instanceof AgentWorkflowError) {
+    return error.status;
+  }
+
   if (error && typeof error === "object") {
     const candidate = error as ErrorLikeWithStatus;
 

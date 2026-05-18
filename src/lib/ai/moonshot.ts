@@ -23,6 +23,7 @@ import type {
   ParsedRequirement,
 } from "@/lib/ai/types";
 import { consistencyCheckSchema, outlineSchema } from "@/lib/ai/types";
+import { parseJsonWithSchema } from "@/lib/agent/validators";
 import { getMoonshotEnv } from "@/lib/env";
 import { parsedRequirementSchema } from "@/lib/validators/parsed-requirement";
 
@@ -364,7 +365,7 @@ export async function callMoonshotJson<T>(
   });
 
   try {
-    const parsed = options.schema.parse(JSON.parse(result.content));
+    const parsed = parseJsonWithSchema(result.content, options.schema);
 
     return {
       ...result,
@@ -377,7 +378,7 @@ export async function callMoonshotJson<T>(
       message: error instanceof Error ? error.message : "unknown_error",
     });
 
-    throw new Error("AI 返回的 JSON 结构无效，请重试。");
+    throw new Error("AI 返回格式异常，系统已尝试使用模板兜底。");
   }
 }
 
