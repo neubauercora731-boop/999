@@ -6,6 +6,7 @@ import clsx from "clsx";
 
 const navItems = [
   { href: "/", label: "首页" },
+  { href: "/demo", label: "Demo" },
   { href: "/tasks", label: "我的任务" },
   { href: "/tasks/new", label: "新建任务" },
   { href: "/auth", label: "登录" },

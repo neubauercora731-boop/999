@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button, ButtonLink } from "@/components/ui";
-import { getApiErrorMessage, readJsonSafely } from "@/lib/utils";
+import {
+  getFriendlyApiErrorMessage,
+  readJsonSafely,
+  toUserFriendlyErrorMessage,
+} from "@/lib/utils";
 
 interface TaskDetailActionsProps {
   taskId: string;
@@ -62,14 +66,12 @@ export function TaskDetailActions({
       }
 
       if (!response.ok) {
-        throw new Error(await getApiErrorMessage(response, "操作失败，请稍后重试。"));
+        throw new Error(await getFriendlyApiErrorMessage(response, "操作失败，请稍后重试。"));
       }
 
       router.refresh();
     } catch (actionError) {
-      setError(
-        actionError instanceof Error ? actionError.message : "操作失败，请稍后重试。",
-      );
+      setError(toUserFriendlyErrorMessage(actionError, "操作失败，请稍后重试。"));
     } finally {
       setPendingAction(null);
     }
@@ -97,17 +99,13 @@ export function TaskDetailActions({
 
       if (!response.ok) {
         throw new Error(
-          await getApiErrorMessage(response, "完整报告生成失败，请稍后重试。"),
+          await getFriendlyApiErrorMessage(response, "完整报告生成失败，请稍后重试。"),
         );
       }
 
       router.refresh();
     } catch (actionError) {
-      setError(
-        actionError instanceof Error
-          ? actionError.message
-          : "完整报告生成失败，请稍后重试。",
-      );
+      setError(toUserFriendlyErrorMessage(actionError, "完整报告生成失败，请稍后重试。"));
     } finally {
       setPendingAction(null);
     }

@@ -74,7 +74,10 @@ export async function GET() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "请先登录，登录后可以保存和查看历史任务。" },
+        { status: 401 },
+      );
     }
 
     const tasks = await listTasks(supabase, user.id);
@@ -94,7 +97,10 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "请先登录，登录后可以保存和查看历史任务。" },
+        { status: 401 },
+      );
     }
 
     const payload = newTaskSchema.parse(await request.json());

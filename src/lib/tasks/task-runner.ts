@@ -129,7 +129,11 @@ function runPython(code: string) {
       child.on("error", async (error) => {
         clearTimeout(timer);
         await rm(dir, { recursive: true, force: true });
-        reject(error);
+        const message =
+          (error as NodeJS.ErrnoException).code === "ENOENT"
+            ? "当前线上环境暂不支持 Python 运行，请复制代码到本地运行，或在本地开发环境中测试。"
+            : error.message;
+        reject(new Error(message));
       });
       child.on("close", async (exitCode) => {
         clearTimeout(timer);

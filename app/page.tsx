@@ -9,32 +9,45 @@ import {
   CardTitle,
   HeroPanel,
   SectionHeader,
-  StepIndicator,
 } from "@/components/ui";
 
-const flow = [
-  "上传任务书",
-  "解析文本",
-  "结构化 JSON",
-  "用户确认",
-  "生成代码",
-  "运行代码",
-  "编辑草稿",
-  "导出 DOCX",
+const coreFlow = [
+  "输入实验任务要求",
+  "AI 拆解实验步骤",
+  "自动生成实验代码",
+  "运行并返回结果",
+  "整理实验报告",
+  "保存到我的任务",
 ];
 
-const principles = [
+const capabilities = [
+  "AI 拆解实验任务",
+  "生成实验代码",
+  "运行验证结果",
+  "整理实验报告",
+  "保存历史任务",
+];
+
+const scenarios = [
+  "Python 基础实验",
+  "数据结构算法实验",
+  "Web 前端实验",
+  "数据库实验报告",
+  "课程实践记录整理",
+];
+
+const productSignals = [
   {
-    title: "用户确认优先",
-    description: "AI 解析结果必须先展示给用户修改确认，确认后才进入代码生成。",
+    title: "不是普通聊天框",
+    description: "任务会被拆成理解、生成、运行、整理报告等明确步骤，用户能看到系统正在做什么。",
   },
   {
-    title: "证据来自真实运行",
-    description: "运行输出只来自后端 Python 子进程 stdout/stderr 或用户上传材料，不伪造截图。",
+    title: "先体验再登录",
+    description: "Demo 不依赖登录和数据库，适合演示完整流程；正式任务登录后再保存历史。",
   },
   {
-    title: "分步工作台",
-    description: "生成代码、运行代码、生成报告草稿分成三个按钮，方便学习和纠错。",
+    title: "学习辅助定位",
+    description: "系统负责组织材料、生成草稿和验证代码，最终内容仍由用户确认、修改和导出。",
   },
 ];
 
@@ -44,85 +57,55 @@ export default function Home() {
       <AppFrame className="py-8 sm:py-10">
         <AppSection className="space-y-6 pt-0">
           <HeroPanel className="animate-rise">
-            <div className="grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
+            <div className="grid gap-10 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
               <div className="space-y-7">
                 <div className="flex flex-wrap gap-2">
-                  <Badge tone="accent">学习辅助工作台</Badge>
-                  <Badge tone="primary">Python P0 闭环</Badge>
-                  <Badge tone="success">用户确认后导出</Badge>
+                  <Badge tone="primary">AI 工作流</Badge>
+                  <Badge tone="accent">实验报告整理</Badge>
+                  <Badge tone="success">P0 可演示闭环</Badge>
                 </div>
 
                 <div className="space-y-4">
                   <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[color:var(--accent)]">
-                    Lab Report Workbench
+                    Lab Report Automation
                   </p>
-                  <h1 className="font-display max-w-4xl text-5xl leading-[0.95] text-[color:var(--foreground)] sm:text-6xl xl:text-7xl">
-                    实验报告自动化助手，
-                    <span className="block text-[color:var(--primary)]">
-                      从展示页升级为任务工作台。
-                    </span>
+                  <h1 className="font-display max-w-4xl text-5xl leading-[0.96] text-[color:var(--foreground)] sm:text-6xl xl:text-7xl">
+                    AI 实验报告自动化助手
                   </h1>
                   <p className="max-w-2xl text-base leading-8 text-[color:var(--muted)] sm:text-lg">
-                    上传任务书后，系统先解析文本并生成结构化 JSON；用户确认后，再分步生成 Python 代码、运行代码、保存输出证据、编辑报告草稿并导出 DOCX。
+                    输入老师布置的实验要求，系统会自动帮你拆解任务、生成代码、运行验证，并整理成实验报告内容。
                   </p>
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <ButtonLink href="/tasks/new" size="lg">
-                    新建任务
+                    开始创建任务
                   </ButtonLink>
-                  <ButtonLink href="/tasks" size="lg" tone="secondary">
-                    我的任务
+                  <ButtonLink href="/demo" size="lg" tone="secondary">
+                    先体验 Demo
                   </ButtonLink>
                 </div>
-
-                <dl className="grid gap-4 border-t border-[color:var(--border)] pt-5 sm:grid-cols-3">
-                  <div>
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[color:var(--muted)]">
-                      STATUS
-                    </dt>
-                    <dd className="mt-1 text-2xl font-semibold tracking-[-0.04em]">
-                      uploaded → exported
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[color:var(--muted)]">
-                      CODE
-                    </dt>
-                    <dd className="mt-1 text-2xl font-semibold tracking-[-0.04em]">
-                      10 秒受限运行
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[color:var(--muted)]">
-                      SAFETY
-                    </dt>
-                    <dd className="mt-1 text-2xl font-semibold tracking-[-0.04em]">
-                      不代交不伪造
-                    </dd>
-                  </div>
-                </dl>
               </div>
 
               <div className="space-y-4">
-                <Card className="bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(243,247,255,0.88))]">
-                  <div className="flex items-center justify-between">
+                <Card className="bg-white/78">
+                  <div className="flex items-center justify-between gap-3">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--muted)]">
-                        P0 Loop
+                        Core Flow
                       </p>
-                      <CardTitle className="mt-2">任务工作台</CardTitle>
+                      <CardTitle className="mt-2">从任务要求到报告草稿</CardTitle>
                     </div>
                     <Badge tone="success">Ready</Badge>
                   </div>
                   <div className="mt-5 grid gap-3">
-                    {flow.map((item, index) => (
+                    {coreFlow.map((item, index) => (
                       <div
                         key={item}
-                        className="rounded-[1.15rem] border border-[color:var(--border)] bg-white/75 px-4 py-3 text-sm text-[color:var(--foreground-soft)]"
+                        className="flex items-center gap-3 rounded-[1rem] border border-[color:var(--border)] bg-white/70 px-4 py-3 text-sm text-[color:var(--foreground-soft)]"
                       >
-                        <span className="mr-3 text-[color:var(--accent)]">
-                          {String(index + 1).padStart(2, "0")}
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--primary-soft)] text-xs font-semibold text-[color:var(--primary)]">
+                          {index + 1}
                         </span>
                         {item}
                       </div>
@@ -136,31 +119,69 @@ export default function Home() {
 
         <AppSection>
           <SectionHeader
-            eyebrow="Workflow"
-            title="一条清楚的学习辅助链路"
-            description="本产品不是代写、代交、伪造作业系统。系统负责组织材料和生成草稿，最终内容必须由用户确认和编辑。"
+            eyebrow="Product"
+            title="它能做什么"
+            description="当前版本聚焦一个可验证闭环：把实验要求转成步骤、代码、运行证据和报告草稿。"
           />
-          <div className="mt-6">
-            <StepIndicator
-              steps={["上传", "解析", "确认", "生成/运行", "编辑", "导出"]}
-              activeStep={1}
-              completedSteps={1}
-            />
+          <div className="mt-6 grid gap-4 md:grid-cols-5">
+            {capabilities.map((item, index) => (
+              <Card key={item} className="space-y-3 bg-white/72">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--accent)]">
+                  0{index + 1}
+                </p>
+                <CardTitle className="text-base">{item}</CardTitle>
+              </Card>
+            ))}
           </div>
         </AppSection>
 
         <AppSection>
-          <div className="grid gap-5 lg:grid-cols-3">
-            {principles.map((item, index) => (
-              <Card key={item.title} className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--accent)]">
-                  0{index + 1}
-                </p>
-                <CardTitle>{item.title}</CardTitle>
-                <CardDescription>{item.description}</CardDescription>
-              </Card>
-            ))}
+          <div className="grid gap-6 lg:grid-cols-[0.82fr_1.18fr]">
+            <div className="space-y-4">
+              <SectionHeader
+                eyebrow="Use Cases"
+                title="适合哪些场景"
+                description="优先服务课程实验和实践记录整理，不承诺替代人工判断。"
+              />
+              <div className="flex flex-wrap gap-2">
+                {scenarios.map((scenario) => (
+                  <Badge key={scenario} tone="neutral">
+                    {scenario}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              {productSignals.map((item) => (
+                <Card key={item.title} className="space-y-3">
+                  <CardTitle>{item.title}</CardTitle>
+                  <CardDescription>{item.description}</CardDescription>
+                </Card>
+              ))}
+            </div>
           </div>
+        </AppSection>
+
+        <AppSection>
+          <Card className="grid gap-6 bg-[color:var(--surface-strong)]/86 p-6 md:grid-cols-[1fr_auto] md:items-center">
+            <div className="space-y-3">
+              <Badge tone="primary">当前版本说明</Badge>
+              <CardTitle className="text-2xl">
+                P0 演示版，先验证完整闭环
+              </CardTitle>
+              <CardDescription className="max-w-4xl text-base leading-8">
+                当前版本重点验证“实验任务 → 代码 → 运行结果 → 报告整理”的完整闭环。后续将支持上传实验要求文档、自动生成 Word 报告、失败自动修复代码等能力。
+              </CardDescription>
+            </div>
+            <div className="flex flex-wrap gap-3 md:justify-end">
+              <ButtonLink href="/demo" size="lg" tone="secondary">
+                查看 Demo
+              </ButtonLink>
+              <ButtonLink href="/tasks/new" size="lg">
+                开始创建任务
+              </ButtonLink>
+            </div>
+          </Card>
         </AppSection>
       </AppFrame>
     </AppShell>

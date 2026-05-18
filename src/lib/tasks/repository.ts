@@ -304,6 +304,41 @@ export async function getTaskDetail(
   };
 }
 
+export async function deleteTask(
+  supabase: SupabaseClient,
+  userId: string,
+  taskId: string,
+) {
+  const { data: files, error: filesError } = await supabase
+    .from("task_files")
+    .select("storage_bucket, storage_path")
+    .eq("task_id", taskId)
+    .eq("user_id", userId);
+
+  assertNoError(filesError);
+
+  const filesByBucket = new Map<string, string[]>();
+  for (const file of files ?? []) {
+    const bucket = (file.storage_bucket as string | null) ?? "";
+    const storagePath = (file.storage_path as string | null) ?? "";
+
+    if (!bucket || !storagePath) continue;
+    filesByBucket.set(bucket, [...(filesByBucket.get(bucket) ?? []), storagePath]);
+  }
+
+  for (const [bucket, paths] of filesByBucket) {
+    await supabase.storage.from(bucket).remove(paths);
+  }
+
+  const { error } = await supabase
+    .from("tasks")
+    .delete()
+    .eq("id", taskId)
+    .eq("user_id", userId);
+
+  assertNoError(error);
+}
+
 export async function updateTask(
   supabase: SupabaseClient,
   taskId: string,

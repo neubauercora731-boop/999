@@ -4,7 +4,11 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Badge, Button, Card, CardDescription, CardTitle } from "@/components/ui";
-import { getApiErrorMessage, readJsonSafely } from "@/lib/utils";
+import {
+  getFriendlyApiErrorMessage,
+  readJsonSafely,
+  toUserFriendlyErrorMessage,
+} from "@/lib/utils";
 
 type UploadKey = "task_book" | "template" | "screenshot" | "data" | "code";
 type UploadMap = Record<UploadKey, File[]>;
@@ -69,13 +73,14 @@ async function uploadFiles(taskId: string, fileType: UploadKey, files: File[]) {
 
     const response = await fetch("/api/upload", { method: "POST", body: formData });
     if (!response.ok) {
-      throw new Error(await getApiErrorMessage(response, `${file.name} 上传失败。`));
+      throw new Error(await getFriendlyApiErrorMessage(response, `${file.name} 上传失败。`));
     }
   }
 }
 
 export function NewTaskForm() {
   const router = useRouter();
+  const [requirementText, setRequirementText] = useState("");
   const [notes, setNotes] = useState("");
   const [uploads, setUploads] = useState<UploadMap>({
     task_book: [],
@@ -88,8 +93,14 @@ export function NewTaskForm() {
   const [error, setError] = useState<string | null>(null);
 
   const title = useMemo(
-    () => stem(uploads.task_book[0]?.name || uploads.template[0]?.name || "Python 实验报告任务"),
-    [uploads],
+    () =>
+      stem(
+        uploads.task_book[0]?.name ||
+          uploads.template[0]?.name ||
+          requirementText.slice(0, 28) ||
+          "Python 实验报告任务",
+      ),
+    [requirementText, uploads],
   );
   const fileCount = Object.values(uploads).reduce((sum, files) => sum + files.length, 0);
 
@@ -99,8 +110,8 @@ export function NewTaskForm() {
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!uploads.task_book.length) {
-      setError("请先上传任务书文件。P0 支持 docx、pdf、png、jpg、txt；其中 pdf/图片 OCR 暂为后续能力。");
+    if (!uploads.task_book.length && !requirementText.trim()) {
+      setError("请先输入实验任务要求，或上传任务书文件。");
       return;
     }
 
@@ -114,7 +125,7 @@ export function NewTaskForm() {
           title,
           experimentName: "",
           courseName: "",
-          requirementText: "",
+          requirementText,
           taskBookText: "",
           notes,
           templateInstructions: "",
@@ -124,7 +135,7 @@ export function NewTaskForm() {
         response.clone(),
       );
       if (!response.ok || !payload?.task?.id) {
-        throw new Error(await getApiErrorMessage(response, "创建任务失败。"));
+        throw new Error(await getFriendlyApiErrorMessage(response, "创建任务失败。"));
       }
 
       await uploadFiles(payload.task.id, "task_book", uploads.task_book);
@@ -136,7 +147,7 @@ export function NewTaskForm() {
       router.push(`/tasks/${payload.task.id}/analysis`);
       router.refresh();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "提交失败。");
+      setError(toUserFriendlyErrorMessage(submitError, "提交失败，请稍后重试。"));
     } finally {
       setSubmitting(false);
     }
@@ -150,14 +161,25 @@ export function NewTaskForm() {
             <div>
               <CardTitle>新建 Python 实验报告任务</CardTitle>
               <CardDescription className="mt-2">
-                上传任务书、模板和补充材料。系统只生成学习辅助草稿，不自动提交学校系统，不伪造截图。
+                直接输入老师布置的实验要求，或上传任务书、模板和补充材料。系统只生成学习辅助草稿，不自动提交学校系统，不伪造截图。
               </CardDescription>
             </div>
             <Badge tone="accent">{fileCount} 个文件</Badge>
           </div>
+          <label className="block space-y-2">
+            <span className="text-sm font-semibold text-[color:var(--foreground)]">
+              实验任务要求
+            </span>
+            <textarea
+              className={`${inputClass} min-h-44 resize-y`}
+              value={requirementText}
+              onChange={(event) => setRequirementText(event.target.value)}
+              placeholder="例如：请完成一个 Python 冒泡排序实验报告，包括实验目的、实验代码、运行结果、结果分析和实验总结。"
+            />
+          </label>
           <FilePicker
             label="任务书文件"
-            hint="必填。支持 docx/pdf/png/jpg/txt；pdf/图片当前会保存原件并提示后续 OCR。"
+            hint="可选。支持 docx/pdf/png/jpg/txt；pdf/图片当前会保存原件并提示后续 OCR。"
             accept=".docx,.pdf,.png,.jpg,.jpeg,.txt"
             files={uploads.task_book}
             onChange={(files) => setFiles("task_book", files)}
@@ -207,6 +229,7 @@ export function NewTaskForm() {
           <li>2. 生成代码、运行代码、生成报告草稿分开操作。</li>
           <li>3. stdout/stderr 会保存为运行证据，失败时展示错误。</li>
           <li>4. 导出前用户可编辑报告草稿。</li>
+          <li>5. 如果线上 Python 运行不可用，页面会给出明确提示。</li>
         </ul>
         <textarea
           className={`${inputClass} min-h-36 resize-y`}
@@ -220,7 +243,7 @@ export function NewTaskForm() {
           </div>
         ) : null}
         <Button className="w-full" size="lg" type="submit" disabled={submitting}>
-          {submitting ? "正在创建任务..." : "创建任务并进入解析"}
+          {submitting ? "正在创建任务..." : "创建任务并进入 AI 拆解"}
         </Button>
       </Card>
     </form>

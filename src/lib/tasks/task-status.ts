@@ -153,14 +153,14 @@ const currentStepLabels: Record<TaskCurrentStep, string> = {
 };
 
 const statusLabels: Record<TaskStatus, string> = {
-  [TASK_STATUS.DRAFT]: "draft",
-  [TASK_STATUS.UPLOADED]: "uploaded",
-  [TASK_STATUS.ANALYZING]: "analyzing",
-  [TASK_STATUS.ANALYZED]: "analyzed",
-  [TASK_STATUS.CONFIRMED]: "confirmed",
-  [TASK_STATUS.GENERATED]: "generated",
-  [TASK_STATUS.EXPORTED]: "exported",
-  [TASK_STATUS.FAILED]: "failed",
+  [TASK_STATUS.DRAFT]: "等待中",
+  [TASK_STATUS.UPLOADED]: "等待解析",
+  [TASK_STATUS.ANALYZING]: "生成中",
+  [TASK_STATUS.ANALYZED]: "待确认",
+  [TASK_STATUS.CONFIRMED]: "生成中",
+  [TASK_STATUS.GENERATED]: "已完成",
+  [TASK_STATUS.EXPORTED]: "已完成",
+  [TASK_STATUS.FAILED]: "失败",
 };
 
 const statusTones: Record<TaskStatus, BadgeProps["tone"]> = {

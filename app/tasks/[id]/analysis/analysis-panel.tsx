@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 
 import { Badge, Button, Card, CardDescription, CardTitle, StepIndicator } from "@/components/ui";
 import type { ParsedRequirement } from "@/lib/ai/types";
-import { getApiErrorMessage, readJsonSafely } from "@/lib/utils";
+import {
+  getFriendlyApiErrorMessage,
+  readJsonSafely,
+  toUserFriendlyErrorMessage,
+} from "@/lib/utils";
 
 interface AnalysisPanelProps {
   taskId: string;
@@ -86,12 +90,12 @@ export function AnalysisPanel({
         error?: string;
       }>(response.clone());
       if (!response.ok || !payload?.parsedRequirement) {
-        throw new Error(await getApiErrorMessage(response, "结构化分析失败。"));
+        throw new Error(await getFriendlyApiErrorMessage(response, "结构化分析失败。"));
       }
       setAnalysis(payload.parsedRequirement);
       router.refresh();
     } catch (analyzeError) {
-      setError(analyzeError instanceof Error ? analyzeError.message : "结构化分析失败。");
+      setError(toUserFriendlyErrorMessage(analyzeError, "结构化分析失败。"));
     } finally {
       setAnalyzing(false);
     }
@@ -107,12 +111,12 @@ export function AnalysisPanel({
         body: JSON.stringify({ analysis }),
       });
       if (!response.ok) {
-        throw new Error(await getApiErrorMessage(response, "确认解析结果失败。"));
+        throw new Error(await getFriendlyApiErrorMessage(response, "确认解析结果失败。"));
       }
       router.push(`/tasks/${taskId}`);
       router.refresh();
     } catch (confirmError) {
-      setError(confirmError instanceof Error ? confirmError.message : "确认解析结果失败。");
+      setError(toUserFriendlyErrorMessage(confirmError, "确认解析结果失败。"));
     } finally {
       setConfirming(false);
     }
@@ -149,9 +153,16 @@ export function AnalysisPanel({
         </div>
 
         {!hasAnalysis ? (
-          <Button onClick={runAnalyze} disabled={analyzing}>
-            {analyzing ? "分析中..." : "开始解析任务书"}
-          </Button>
+          <div className="space-y-4">
+            <Button onClick={runAnalyze} disabled={analyzing}>
+              {analyzing ? "分析中..." : "开始解析任务书"}
+            </Button>
+            {error ? (
+              <div className="rounded-[1rem] border border-[color:var(--danger)]/30 bg-[color:var(--danger-soft)] px-4 py-3 text-sm text-[color:var(--danger)]">
+                {error}
+              </div>
+            ) : null}
+          </div>
         ) : (
           <div className="grid gap-4">
             <label className="grid gap-2">

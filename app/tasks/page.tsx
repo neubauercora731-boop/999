@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import {
   AppFrame,
   AppSection,
@@ -24,6 +22,8 @@ import {
 } from "@/lib/tasks/task-status";
 import { listTasks } from "@/lib/tasks/repository";
 import { formatDateTime, toErrorMessage } from "@/lib/utils";
+
+import { TaskListActions } from "./task-list-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -83,7 +83,7 @@ export default async function TasksPage() {
                     <span className="block text-[color:var(--primary)]">每一步都可继续处理。</span>
                   </h1>
                   <p className="max-w-2xl text-sm leading-8 text-[color:var(--muted)] sm:text-base">
-                    任务状态现在围绕 P0 闭环展示：uploaded / analyzed / confirmed / generated / exported / failed。
+                    这里保存每一次正式任务的要求、代码、运行结果和报告草稿。失败任务也会保留错误原因，方便重新生成。
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-3">
@@ -154,6 +154,7 @@ export default async function TasksPage() {
                     <Badge tone="neutral">
                       {getTaskCurrentStepLabel(task.current_step)}
                     </Badge>
+                    <Badge tone="primary">Python 实验报告</Badge>
                   </div>
                   <div>
                     <CardTitle className="text-2xl">{task.title}</CardTitle>
@@ -172,20 +173,12 @@ export default async function TasksPage() {
                       更新：{formatDateTime(task.updated_at)}
                     </div>
                   </div>
-                  <div className="mt-auto flex flex-wrap gap-3">
-                    <Link
-                      href={`/tasks/${task.id}/analysis`}
-                      className="inline-flex items-center justify-center rounded-full border border-[color:var(--border-strong)] bg-white/75 px-5 py-2.5 text-sm font-medium transition hover:bg-white"
-                    >
-                      解析确认
-                    </Link>
-                    <Link
-                      href={`/tasks/${task.id}`}
-                      className="inline-flex items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-deep))] px-5 py-2.5 text-sm font-medium text-white transition"
-                    >
-                      进入工作台
-                    </Link>
-                  </div>
+                  {task.last_error ? (
+                    <div className="rounded-[1rem] border border-[color:var(--danger)]/30 bg-[color:var(--danger-soft)] px-4 py-3 text-sm leading-6 text-[color:var(--danger)]">
+                      失败原因：{task.last_error}
+                    </div>
+                  ) : null}
+                  <TaskListActions taskId={task.id} taskTitle={task.title} />
                 </Card>
               ))}
             </div>

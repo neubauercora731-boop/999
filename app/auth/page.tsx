@@ -7,6 +7,7 @@ import {
   AppShell,
   Badge,
   Button,
+  ButtonLink,
   Card,
   CardDescription,
   HeroPanel,
@@ -217,6 +218,11 @@ export default function AuthPage() {
             <p className="mt-3 text-sm leading-7 text-[color:var(--muted)]">
               {error || "Supabase 客户端初始化失败，请检查环境变量后重试。"}
             </p>
+            <div className="mt-5 flex justify-center">
+              <ButtonLink href="/demo" tone="secondary">
+                先体验 Demo
+              </ButtonLink>
+            </div>
           </div>
         </div>
       </AppShell>
@@ -239,14 +245,23 @@ export default function AuthPage() {
                 Account Access
               </p>
               <h1 className="font-display max-w-3xl text-5xl leading-[0.95] text-[color:var(--foreground)] sm:text-6xl">
-                登录之后，
+                登录后保存历史，
                 <span className="block text-[color:var(--primary)]">
-                  就直接进入交付链路。
+                  也可以先体验 Demo。
                 </span>
               </h1>
               <p className="max-w-2xl text-sm leading-8 text-[color:var(--muted)] sm:text-base">
-                这里没有多余 onboarding。进入后你会直接到任务工作区，开始上传任务书、确认分析结果并生成实验报告。
+                输入实验任务要求后，系统会拆解步骤、生成代码、运行验证并整理报告。登录后可以保存任务历史；未登录也可以先看一遍完整 Demo。
               </p>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <ButtonLink href="/tasks/new" size="lg">
+                开始创建任务
+              </ButtonLink>
+              <ButtonLink href="/demo" size="lg" tone="secondary">
+                先体验 Demo
+              </ButtonLink>
             </div>
           </div>
 

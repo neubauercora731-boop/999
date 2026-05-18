@@ -79,6 +79,12 @@ export default async function TaskWorkbenchPage({ params }: PageProps) {
   const stdout = latestJsonValue<string>(detail.outputs, "stdout");
   const stderr = latestJsonValue<string>(detail.outputs, "stderr");
   const flowStep = getTaskFlowStepIndex(detail.task.status);
+  const taskInputSummary =
+    detail.input?.requirement_text ||
+    detail.input?.task_book_text ||
+    detail.input?.student_notes ||
+    detail.task.description ||
+    "";
 
   return (
     <AppShell>
@@ -158,6 +164,7 @@ export default async function TaskWorkbenchPage({ params }: PageProps) {
               initialStdout={stdout}
               initialStderr={stderr}
               initialReport={report}
+              taskInputSummary={taskInputSummary}
             />
           )}
         </AppSection>
