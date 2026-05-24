@@ -4,6 +4,42 @@ Last updated: 2026-05-24
 
 This document is the long-term record for the Lab Report Assistant website. Update it whenever the website code, configuration, workflow, API behavior, environment requirements, or local/deployment process changes.
 
+### 2026-05-24 - GitHub Main Push and Vercel Production Verification
+
+Changed files:
+- `docs/website-change-log.md`
+- `WEBSITE_CHANGE_LOG.md`
+
+What changed:
+- Pushed release commit `b9f748c` to `origin/main`.
+- Confirmed public GitHub Actions regression completed successfully for `main`.
+- Confirmed the existing Vercel Git Integration deployed the pushed `main` branch to the production site.
+- Verified the production homepage, auth page, and Supabase health endpoint respond successfully.
+
+Why:
+- The project moved from local release preparation into actual GitHub and Vercel publication while preserving local backup and secret boundaries.
+
+Configuration impact:
+- No new environment variables.
+- No new npm dependencies.
+- Vercel uses its existing configured environment variables.
+
+Data/schema impact:
+- No Supabase schema change.
+- No Storage bucket change.
+
+Verification:
+- GitHub push: `main -> origin/main`, release commit `b9f748c`.
+- GitHub Actions regression: success.
+- `https://999-rosy.vercel.app/`: 200 OK.
+- `https://999-rosy.vercel.app/auth`: 200 OK.
+- `https://999-rosy.vercel.app/api/system/supabase-health`: 200 OK, `{"ok":true}`.
+
+Security notes:
+- `.env.local` was not committed.
+- Real DOC/DOCX local-only fixtures were not committed.
+- Vercel deployment package excludes local artifacts through `.vercelignore`.
+
 ### 2026-05-24 - GitHub and Vercel Release Preparation With Local Backup
 
 Changed files:
