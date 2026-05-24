@@ -1,0 +1,8 @@
+{
+  "workflowType": "template_preserving_docx_fill",
+  "source": "sy5.doc",
+  "mustPreserveOriginalTemplate": true,
+  "codeInsertionTarget": "//实现代码：",
+  "screenshotInsertionTarget": "实验结果与分析",
+  "thinkingInsertionTarget": "问题及思考"
+}

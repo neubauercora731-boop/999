@@ -1,0 +1,143 @@
+{
+  "taskName": "电商销售数据综合分析（8 大方法实战）",
+  "taskType": "python_file_io_lab",
+  "originalRequirementSummary": "读取 online_sales.csv，使用 Python 完成电商销售数据的读取、预处理、描述性分析、分组分析、结构分析、分布分析、对比分析、简单线性回归、时间序列分析和报告撰写，并以截图形式展示结果。",
+  "assumptions": [
+    "样本库以 Markdown、JSON、Python、CSV 和 PNG 图表保存，不生成新的学校模板 DOCX。",
+    "CSV 文件不含明显个人隐私，可复制进样本目录用于复跑。",
+    "原始 .doc 和旧 .docx 只记录来源，不复制进仓库。",
+    "当前环境缺少 seaborn 和 statsmodels 时，代码允许 fallback 以完成真实运行。"
+  ],
+  "missingInfo": [
+    "未明确是否必须保持学校 Word 模板。",
+    "未明确是否允许安装 Python 依赖。",
+    "未明确最终图表是否必须使用中文坐标标签。",
+    "时间序列只有 4 个月，缺少稳定季节性建模所需数据。"
+  ],
+  "stages": [
+    {
+      "name": "analyze_requirement",
+      "type": "llm",
+      "inputSummary": "原始 .doc、CSV、旧 .docx。",
+      "action": "提取实验名称、实验目标、显性要求、隐性要求和限制条件。",
+      "outputSummary": "任务为电商销售 CSV 数据分析实验，要求覆盖 8 类分析方法并生成报告。",
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "review_old_result",
+      "type": "llm",
+      "inputSummary": "旧成果 1.docx。",
+      "action": "读取旧报告结构，识别可参考内容和不能进入样本库的问题。",
+      "outputSummary": "旧成果有参考价值，但含个人信息，且项目名称与实际任务不一致。",
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "prepare_sample_folder",
+      "type": "tool",
+      "inputSummary": "docs/agent-samples/001-ecommerce-sales-analysis。",
+      "action": "创建样本目录、generated-code、original-files、outputs，并复制 CSV。",
+      "outputSummary": "样本目录创建完成，CSV 保存为 original-files/online_sales.csv。",
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "generate_code",
+      "type": "llm",
+      "inputSummary": "任务要求、CSV 字段和预期图表。",
+      "action": "生成 Python 数据分析脚本。",
+      "outputSummary": "生成 generated-code/main.py。",
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "run_code_first_attempt",
+      "type": "tool",
+      "inputSummary": "generated-code/main.py。",
+      "action": "运行 Python 脚本并捕获 stdout/stderr。",
+      "outputSummary": "第一次运行失败，缺少 seaborn。",
+      "success": false,
+      "error": "ModuleNotFoundError: No module named 'seaborn'"
+    },
+    {
+      "name": "debug_once",
+      "type": "llm",
+      "inputSummary": "首次运行 stderr。",
+      "action": "将 seaborn 和 statsmodels 改为可选依赖；缺失时用 matplotlib/numpy fallback。",
+      "outputSummary": "代码保持优先使用要求库的逻辑，并能在当前环境真实运行。",
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "run_code_second_attempt",
+      "type": "tool",
+      "inputSummary": "修复后的 main.py。",
+      "action": "设置 PYTHONIOENCODING=utf-8 后重新运行。",
+      "outputSummary": "运行成功，生成 stdout、统计表、代码截图和 6 张效果图。",
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "generate_report",
+      "type": "llm",
+      "inputSummary": "真实 stdout、统计表、图表路径。",
+      "action": "生成 final-report.md。",
+      "outputSummary": "报告基于真实运行结果，包含实施过程、结果分析、问题及思考。",
+      "success": true,
+      "error": null
+    },
+    {
+      "name": "evaluate_and_extract_pattern",
+      "type": "llm",
+      "inputSummary": "完整样本过程与产物。",
+      "action": "生成自动化分析、workflow pattern 候选和质量评分。",
+      "outputSummary": "沉淀为 python_data_analysis_csv_lab 候选模式。",
+      "success": true,
+      "error": null
+    }
+  ],
+  "code": {
+    "generated": true,
+    "filename": "generated-code/main.py",
+    "language": "Python",
+    "runCommand": "$env:PYTHONIOENCODING='utf-8'; python docs\\agent-samples\\001-ecommerce-sales-analysis\\generated-code\\main.py",
+    "ranSuccessfully": true,
+    "stdout": "encoding_used=gbk; rows=32; missing_cells=0; duplicate_rows=0; amount_mismatch_rows=0; total_amount=70351.00; total_quantity=118; average_order_amount=2198.47; median_order_amount=898.00; category top=电子 53601; province top=广东 29952; channel top=抖音 36168; regression: amount = 2947.99 + (-203.26) * quantity, R^2=0.0985.",
+    "stderr": "",
+    "debugTriggered": true,
+    "debugSummary": "首次运行因缺少 seaborn 失败；修复为 seaborn/statsmodels 可选导入，缺失时使用 matplotlib/numpy fallback；第二次运行成功。"
+  },
+  "report": {
+    "generated": true,
+    "sections": [
+      "实验基本信息",
+      "实验目的",
+      "实验代码与运行",
+      "实施过程与结果分析",
+      "问题及思考",
+      "结论"
+    ],
+    "usesRealStdout": true,
+    "limitations": [
+      "当前环境未安装 seaborn 和 statsmodels，代码使用 fallback 完成真实运行。",
+      "时间序列只有 4 个月，预测只能作为教学演示。",
+      "本次未生成学校模板 DOCX。"
+    ]
+  },
+  "finalDeliverables": [
+    "original-requirement.md",
+    "task-understanding.md",
+    "execution-plan.md",
+    "generated-code/main.py",
+    "run-result.md",
+    "final-report.md",
+    "agent-trace.json",
+    "workflow-pattern-candidate.json",
+    "automation-analysis.md",
+    "quality-score.md",
+    "README.md",
+    "outputs/*.png",
+    "outputs/*.csv"
+  ]
+}

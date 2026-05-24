@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lab-report-assistant.local/schemas/agent-sample.json",
+  "title": "AgentSampleMetadata",
+  "type": "object",
+  "required": [
+    "sample_id",
+    "title",
+    "task_type",
+    "required_runners",
+    "required_evidence",
+    "docx_mode",
+    "must_preserve_original_docx",
+    "must_not_fake_screenshot",
+    "screenshot_policy",
+    "expected_failure_behavior",
+    "quality_checks"
+  ],
+  "properties": {
+    "sample_id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "task_type": {
+      "type": "string",
+      "enum": [
+        "document_ingestion",
+        "template_preserving_docx_fill",
+        "python_algorithm_lab",
+        "python_file_io_lab",
+        "python_oop_lab",
+        "python_data_analysis_lab",
+        "frontend_static_html_lab",
+        "frontend_react_lab",
+        "frontend_nextjs_lab",
+        "failed_run_recovery",
+        "no_screenshot_required"
+      ]
+    },
+    "required_runners": {
+      "type": "array",
+      "items": { "enum": ["python", "browser", "docx_export", "quality_evaluation"] }
+    },
+    "required_evidence": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "command_output_screenshot",
+          "browser_page_screenshot",
+          "stdout",
+          "stderr",
+          "exitCode",
+          "runtime",
+          "docx_export"
+        ]
+      }
+    },
+    "docx_mode": {
+      "enum": ["patch_original_docx", "generated_report_docx", "none"]
+    },
+    "must_preserve_original_docx": { "type": "boolean" },
+    "must_not_fake_screenshot": { "type": "boolean" },
+    "screenshot_policy": {
+      "type": "object",
+      "required": ["required", "allowed_kinds", "missing_behavior"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "allowed_kinds": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "command_output_screenshot",
+              "browser_page_screenshot",
+              "stdout",
+              "stderr",
+              "exitCode",
+              "runtime",
+              "docx_export"
+            ]
+          }
+        },
+        "missing_behavior": {
+          "enum": [
+            "insert_missing_screenshot_marker",
+            "not_required",
+            "fail_export"
+          ]
+        }
+      }
+    },
+    "expected_failure_behavior": {
+      "type": "object",
+      "required": ["run_failed", "screenshot_failed", "export_failed"],
+      "properties": {
+        "run_failed": {
+          "enum": ["record_real_failure", "debug_once_then_record"]
+        },
+        "screenshot_failed": {
+          "enum": ["insert_missing_screenshot_marker", "fail_export"]
+        },
+        "export_failed": { "enum": ["return_structured_error"] }
+      }
+    },
+    "quality_checks": {
+      "type": "object",
+      "required": [
+        "task_requirements_covered",
+        "code_actually_runs",
+        "evidence_attached_or_missing_marked",
+        "docx_structure_preserved"
+      ],
+      "properties": {
+        "task_requirements_covered": { "type": "boolean" },
+        "code_actually_runs": { "type": "boolean" },
+        "evidence_attached_or_missing_marked": { "type": "boolean" },
+        "docx_structure_preserved": { "type": "boolean" }
+      }
+    }
+  }
+}

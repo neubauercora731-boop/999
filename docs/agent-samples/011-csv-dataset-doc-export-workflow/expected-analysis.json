@@ -1,0 +1,7 @@
+{
+  "workflowType": "python_data_analysis_lab",
+  "fileRoles": ["task_book", "dataset"],
+  "screenshotRequired": true,
+  "datasetFiles": ["data.csv"],
+  "exportFallback": "generated_report_docx"
+}

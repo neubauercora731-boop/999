@@ -383,22 +383,40 @@ export async function createTaskRun(
   },
 ) {
   const runNo = await getNextRunNumber(supabase, params.taskId);
+  const legacyRunTypeMap: Record<string, string> = {
+    confirm_analysis: "analyze",
+    generate_code: "generate_report",
+    run_code: "generate_report",
+    debug_code: "generate_report",
+    save_report: "generate_report",
+    export_docx: "generate_report",
+  };
+  const insertRun = async (runType: string) =>
+    supabase
+      .from("task_runs")
+      .insert({
+        task_id: params.taskId,
+        user_id: params.userId,
+        run_no: runNo,
+        run_type: runType,
+        status: TASK_RUN_STATUS.RUNNING,
+        model_name: params.modelName,
+        model: params.modelName,
+        input_context: params.inputContext ?? {},
+        started_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
 
-  const { data, error } = await supabase
-    .from("task_runs")
-    .insert({
-      task_id: params.taskId,
-      user_id: params.userId,
-      run_no: runNo,
-      run_type: params.runType,
-      status: TASK_RUN_STATUS.RUNNING,
-      model_name: params.modelName,
-      model: params.modelName,
-      input_context: params.inputContext ?? {},
-      started_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
+  let { data, error } = await insertRun(params.runType);
+
+  if (
+    error &&
+    error.message.includes("task_runs_run_type_check") &&
+    legacyRunTypeMap[params.runType]
+  ) {
+    ({ data, error } = await insertRun(legacyRunTypeMap[params.runType]));
+  }
 
   assertNoError(error);
   return data as TaskRunRecord;
@@ -496,7 +514,6 @@ export async function createTaskOutput(
     consistencyJson?: JsonPayload | null;
     outlineMarkdown?: string | null;
     reportMarkdown?: string | null;
-    docxUrl?: string | null;
   },
 ) {
   const { data, error } = await supabase
@@ -512,7 +529,6 @@ export async function createTaskOutput(
       consistency_json: params.consistencyJson ?? {},
       outline_markdown: params.outlineMarkdown ?? null,
       report_markdown: params.reportMarkdown ?? null,
-      docx_url: params.docxUrl ?? null,
     })
     .select()
     .single();
@@ -573,10 +589,6 @@ export async function createTaskFile(
       mime_type: params.mimeType,
       file_size: params.fileSize,
       checksum: params.checksum ?? null,
-      parsed_text:
-        typeof params.metadata?.parsed_text === "string"
-          ? params.metadata.parsed_text
-          : null,
       metadata: params.metadata ?? {},
     })
     .select()
@@ -584,6 +596,138 @@ export async function createTaskFile(
 
   assertNoError(error);
   return data as TaskFileRecord;
+}
+
+export async function getTaskFileById(
+  supabase: SupabaseClient,
+  userId: string,
+  taskId: string,
+  fileId: string,
+) {
+  const { data, error } = await supabase
+    .from("task_files")
+    .select("*")
+    .eq("id", fileId)
+    .eq("task_id", taskId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  assertNoError(error);
+  return (data as TaskFileRecord | null) ?? null;
+}
+
+export async function saveDocumentIngestionResult(
+  supabase: SupabaseClient,
+  params: {
+    taskId: string;
+    userId: string;
+    fileId: string;
+    rawText: string;
+    normalizedText: string;
+    structuredTask: unknown;
+    parserVersion: string;
+    extractedAt: string;
+    fileType: string;
+    extractionMethod: string;
+    warnings: string[];
+    fileRole?: string;
+    roleConfidence?: number;
+    roleReason?: string;
+    roleSource?: string;
+    inferredFileRole?: string;
+  },
+) {
+  const { data: file, error: fileReadError } = await supabase
+    .from("task_files")
+    .select("metadata")
+    .eq("id", params.fileId)
+    .eq("task_id", params.taskId)
+    .eq("user_id", params.userId)
+    .maybeSingle();
+
+  assertNoError(fileReadError);
+
+  if (!file) {
+    throw new RepositoryError("找不到该文件，或你没有权限访问它。", {
+      status: 404,
+    });
+  }
+
+  const existingMetadata =
+    file.metadata && typeof file.metadata === "object"
+      ? (file.metadata as JsonPayload)
+      : {};
+
+  const documentIngestion = {
+    file_type: params.fileType,
+    raw_text: params.rawText,
+    normalized_text: params.normalizedText,
+    structured_task: params.structuredTask,
+    parser_version: params.parserVersion,
+    extracted_at: params.extractedAt,
+    extraction_method: params.extractionMethod,
+    warnings: params.warnings,
+  };
+
+  const { error: fileUpdateError } = await supabase
+    .from("task_files")
+    .update({
+      metadata: {
+        ...existingMetadata,
+        file_role: params.fileRole,
+        role_confidence: params.roleConfidence,
+        role_reason: params.roleReason,
+        role_source: params.roleSource,
+        inferred_file_role: params.inferredFileRole,
+        text_excerpt: params.normalizedText,
+        parsed_text: params.normalizedText,
+        document_ingestion: documentIngestion,
+      },
+    })
+    .eq("id", params.fileId)
+    .eq("task_id", params.taskId)
+    .eq("user_id", params.userId);
+
+  assertNoError(fileUpdateError);
+
+  const { data: input, error: inputReadError } = await supabase
+    .from("task_inputs")
+    .select("task_book_text, raw_payload")
+    .eq("task_id", params.taskId)
+    .eq("user_id", params.userId)
+    .maybeSingle();
+
+  assertNoError(inputReadError);
+
+  const rawPayload =
+    input && typeof input.raw_payload === "object" && input.raw_payload
+      ? (input.raw_payload as JsonPayload)
+      : {};
+  const currentTaskBookText =
+    typeof input?.task_book_text === "string" ? input.task_book_text : "";
+  const taskBookText = currentTaskBookText
+    ? `${currentTaskBookText}\n\n[文档解析结果]\n${params.normalizedText}`
+    : params.normalizedText;
+
+  const { error: inputUpdateError } = await supabase
+    .from("task_inputs")
+    .update({
+      task_book_text: taskBookText,
+      raw_payload: {
+        ...rawPayload,
+        documentIngestion: {
+          ...(typeof rawPayload.documentIngestion === "object" &&
+          rawPayload.documentIngestion
+            ? (rawPayload.documentIngestion as JsonPayload)
+            : {}),
+          [params.fileId]: documentIngestion,
+        },
+      },
+    })
+    .eq("task_id", params.taskId)
+    .eq("user_id", params.userId);
+
+  assertNoError(inputUpdateError);
 }
 
 export async function appendTaskInputText(
@@ -718,5 +862,29 @@ export async function updateTaskExecutionStatuses(
   }
   if (params.missingFields !== undefined) patch.missing_fields = params.missingFields;
 
-  return updateTask(supabase, taskId, patch as Partial<TaskRecord>);
+  try {
+    return await updateTask(supabase, taskId, patch as Partial<TaskRecord>);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const status = patch.status;
+    const legacyStatusMap: Record<string, string> = {
+      analyzed: "waiting_confirm",
+      confirmed: "generating_outline",
+      generated: "completed",
+      exported: "completed",
+    };
+
+    if (
+      typeof status === "string" &&
+      legacyStatusMap[status] &&
+      message.includes("tasks_status_check")
+    ) {
+      return updateTask(supabase, taskId, {
+        ...patch,
+        status: legacyStatusMap[status],
+      } as Partial<TaskRecord>);
+    }
+
+    throw error;
+  }
 }

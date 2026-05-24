@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 
+import {
+  inferFileRole,
+  isParseSupported,
+  type FileRole,
+} from "@/lib/agent/document-ingestion/file-role";
+import { buildCsvDatasetPreview, isCsvFile } from "@/lib/datasets/csv";
 import { createFileChecksum, extractTextExcerpt } from "@/lib/files";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -12,6 +18,80 @@ import {
 import { getErrorStatus, sanitizeFileName, toErrorMessage } from "@/lib/utils";
 
 export const runtime = "nodejs";
+
+function resolveUploadFileRole(input: {
+  fileType: string;
+  fileName: string;
+  mimeType: string;
+  inferredRole: ReturnType<typeof inferFileRole>;
+  csvDataset: unknown;
+}): {
+  fileRole: FileRole;
+  confidence: number;
+  reason: string;
+  source: string;
+} {
+  if (input.fileType === "data" || input.csvDataset) {
+    return {
+      fileRole: "dataset",
+      confidence: 0.98,
+      reason:
+        input.fileType === "data"
+          ? "用户上传到数据文件栏"
+          : "CSV 文件按数据集处理",
+      source: input.fileType === "data" ? "user_selected" : "filename_rule",
+    };
+  }
+
+  if (
+    input.fileType === "task_book" &&
+    isParseSupported(input.fileName, input.mimeType)
+  ) {
+    return {
+      fileRole: "task_book",
+      confidence: Math.max(input.inferredRole.confidence, 0.97),
+      reason: "用户上传到任务书文件栏，且文件支持文本解析",
+      source: "user_selected",
+    };
+  }
+
+  if (
+    input.fileType === "template" &&
+    isParseSupported(input.fileName, input.mimeType)
+  ) {
+    return {
+      fileRole: "report_template",
+      confidence: Math.max(input.inferredRole.confidence, 0.94),
+      reason: "用户上传到报告模板栏，且文件支持文本解析",
+      source: "user_selected",
+    };
+  }
+
+  if (input.fileType === "code") {
+    return {
+      fileRole: "source_code",
+      confidence: Math.max(input.inferredRole.confidence, 0.94),
+      reason: "用户上传到代码文件栏",
+      source: "user_selected",
+    };
+  }
+
+  if (input.fileType === "screenshot") {
+    return {
+      fileRole: "screenshot",
+      confidence: Math.max(input.inferredRole.confidence, 0.94),
+      reason: "用户上传到截图栏",
+      source: "user_selected",
+    };
+  }
+
+  return {
+    fileRole: input.inferredRole.role,
+    confidence: input.inferredRole.confidence,
+    reason: input.inferredRole.reason,
+    source: "filename_rule",
+  };
+}
 
 export async function POST(request: Request) {
   try {
@@ -53,6 +133,18 @@ export async function POST(request: Request) {
     const checksum = createFileChecksum(bytes);
     const extractedText = await extractTextExcerpt(file.name, file.type, bytes);
     const textExcerpt = extractedText.text;
+    const inferredRole = inferFileRole(file.name, file.type);
+    const csvDataset = textExcerpt && isCsvFile(file.name, file.type)
+      ? buildCsvDatasetPreview(file.name, textExcerpt)
+      : null;
+    const roleResolution = resolveUploadFileRole({
+      fileType,
+      fileName: file.name,
+      mimeType: file.type,
+      inferredRole,
+      csvDataset,
+    });
+    const fileRole = roleResolution.fileRole;
     const objectPath = `${user.id}/${taskId}/${Date.now()}-${sanitizeFileName(file.name)}`;
 
     // Storage writes run through the server-side admin client after we have
@@ -82,6 +174,12 @@ export async function POST(request: Request) {
         fileSize: file.size,
         checksum,
         metadata: {
+          inferred_file_role: inferredRole.role,
+          file_role: fileRole,
+          role_confidence: roleResolution.confidence,
+          role_reason: roleResolution.reason,
+          role_source: roleResolution.source,
+          ...(csvDataset ? { dataset: { kind: "csv", ...csvDataset } } : {}),
           extraction_method: extractedText.method,
           parsed_text: textExcerpt,
           ocr_status:
@@ -92,7 +190,7 @@ export async function POST(request: Request) {
         },
       });
 
-      if (textExcerpt && fileType === "task_book") {
+      if (textExcerpt && fileType === "task_book" && fileRole === "task_book") {
         await appendTaskInputText(supabase, {
           taskId,
           userId: user.id,

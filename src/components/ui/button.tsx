@@ -6,13 +6,13 @@ type ButtonSize = "sm" | "md" | "lg";
 
 const toneClasses: Record<ButtonTone, string> = {
   primary:
-    "border border-[rgba(255,255,255,0.14)] bg-[linear-gradient(135deg,var(--primary),var(--primary-deep))] text-[color:var(--primary-foreground)] shadow-[var(--shadow-sm)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]",
+    "border border-[rgba(255,255,255,0.18)] bg-[color:var(--primary)] text-[color:var(--primary-foreground)] shadow-[var(--shadow-sm)] hover:bg-[color:var(--primary-deep)] hover:shadow-[var(--shadow-md)]",
   secondary:
-    "border border-[color:var(--border-strong)] bg-[rgba(255,252,248,0.88)] text-[color:var(--foreground)] shadow-[0_10px_24px_rgba(27,17,10,0.06)] hover:-translate-y-0.5 hover:bg-white",
+    "border border-[color:var(--border-strong)] bg-white/90 text-[color:var(--foreground)] shadow-[0_8px_22px_rgba(20,24,33,0.05)] hover:bg-white",
   ghost:
     "border border-transparent bg-transparent text-[color:var(--foreground)] hover:border-[color:var(--border)] hover:bg-white/65",
   danger:
-    "border border-transparent bg-[color:var(--danger)] text-white shadow-[var(--shadow-sm)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]",
+    "border border-transparent bg-[color:var(--danger)] text-white shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)]",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

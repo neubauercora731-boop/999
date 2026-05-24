@@ -1,0 +1,6 @@
+{
+  "workflowType": "frontend_static_html_lab",
+  "screenshotRequired": true,
+  "expectedEvidence": ["browser_page_screenshot"],
+  "notes": ["This sample validates real browser rendering, not command-line output."]
+}

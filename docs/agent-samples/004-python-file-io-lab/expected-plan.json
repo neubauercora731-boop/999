@@ -1,0 +1,1 @@
+{ "steps": ["read data.txt", "parse scores", "calculate average/max/min", "print results", "capture command screenshot"] }

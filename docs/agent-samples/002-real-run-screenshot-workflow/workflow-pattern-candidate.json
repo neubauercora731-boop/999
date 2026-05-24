@@ -1,0 +1,83 @@
+{
+  "id": "real_run_screenshot_workflow",
+  "name": "真实运行截图工作流",
+  "description": "当实验任务要求运行截图或结果截图时，基于真实 run-code 证据生成 PNG、保存 metadata，并在 DOCX 导出时插入真实截图或标记缺失。",
+  "matchKeywords": [
+    "截图",
+    "运行截图",
+    "实验截图",
+    "结果截图",
+    "界面截图",
+    "运行界面",
+    "运行结果图",
+    "附图",
+    "附运行结果图",
+    "请截图",
+    "请附截图",
+    "screenshot",
+    "screen shot"
+  ],
+  "negativeMatchKeywords": [
+    "无截图要求",
+    "无需截图",
+    "不用截图",
+    "不需要截图",
+    "不要求截图",
+    "不必截图",
+    "no screenshot",
+    "screenshot not required",
+    "without screenshot"
+  ],
+  "requiredSteps": [
+    "detect_screenshot_requirement",
+    "detect_negative_screenshot_requirement",
+    "run_code",
+    "collect_stdout_stderr_exit_code_runtime",
+    "generate_command_output_screenshot",
+    "upload_png_to_storage",
+    "save_screenshot_metadata",
+    "download_png_for_docx_export",
+    "insert_screenshot_into_docx",
+    "fallback_mark_screenshot_missing"
+  ],
+  "llmSteps": [
+    "identify_screenshot_requirement_in_task_analysis",
+    "explain_missing_screenshot_risk_in_report"
+  ],
+  "toolSteps": [
+    "run_python_code",
+    "render_terminal_evidence_png",
+    "upload_png_to_storage",
+    "download_png_for_docx_export",
+    "patch_docx_document_xml_and_relationships",
+    "validate_docx_contains_png_media"
+  ],
+  "userConfirmSteps": [
+    "confirm_uploaded_screenshot_is_real_if_user_supplies_it",
+    "confirm_browser_target_url_for_frontend_tasks",
+    "confirm_submission_readiness_when_screenshot_missing"
+  ],
+  "qualityRules": [
+    "截图必须来自真实运行证据",
+    "不能 AI 生成假截图",
+    "不能伪造 stdout/stderr",
+    "如果任务要求截图但没有真实截图，必须标记 screenshotMissing=true",
+    "如果任务明确不要求截图，不能强制生成截图",
+    "DOCX 中有真实截图时必须标注来源",
+    "DOCX 中没有真实截图时必须插入【截图缺失】说明",
+    "Storage object key 必须使用安全 ASCII 文件名，用户下载文件名可以保留中文"
+  ],
+  "failureHandling": [
+    "run-code 失败时仍保存真实 stdout/stderr 和失败截图证据",
+    "截图生成失败时不让 run-code 整体失败，但返回 warning",
+    "截图下载失败时 DOCX 导出标记截图缺失",
+    "browser_page_screenshot 未实现时明确标记暂不支持",
+    "无法定位 DOCX 插入点时停止导出并要求用户确认"
+  ],
+  "lastE2eTaskIds": {
+    "standardDocxScreenshotTask": "a2e3c74e-fc55-418e-9c96-72428f163040",
+    "noScreenshotTask": "ef57e86d-bbba-46ab-8728-686960fdd7af",
+    "negativePhraseTask": "c258f31c-cfae-4265-afad-1879b6800aef",
+    "failedRunTask": "c8814b8c-406c-4097-b6af-a9befed56f94"
+  }
+}

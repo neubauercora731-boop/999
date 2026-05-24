@@ -142,14 +142,32 @@ export function TaskDetailActions({
           {pendingAction === "check" ? "正在检查..." : "运行一致性检查"}
         </Button>
         {canExportDocx ? (
-          <ButtonLink href={`/api/tasks/${taskId}/export-docx`} tone="secondary">
-            下载 DOCX
+          <ButtonLink
+            href={`/api/tasks/${taskId}/export-docx?mode=auto`}
+            tone="secondary"
+          >
+            保留原任务书导出 DOCX
+          </ButtonLink>
+        ) : null}
+        {canExportDocx ? (
+          <ButtonLink
+            href={`/api/tasks/${taskId}/export-docx?mode=generated_report_docx`}
+            tone="ghost"
+          >
+            生成新版 DOCX（非原格式）
           </ButtonLink>
         ) : null}
       </div>
 
+      {canExportDocx ? (
+        <p className="text-xs leading-6 text-[color:var(--muted)]">
+          默认导出会保留原任务书格式，只在任务下方追加生成内容；如果原文件是 .doc
+          且无法安全转换为 .docx，系统会停止并提示上传标准 .docx，不会用新报告冒充原格式填充。
+        </p>
+      ) : null}
+
       {error ? (
-        <div className="rounded-[1.2rem] border border-[color:var(--danger)]/30 bg-[color:var(--danger-soft)] px-4 py-3 text-sm text-[color:var(--danger)]">
+        <div className="rounded-lg border border-[color:var(--danger)]/30 bg-[color:var(--danger-soft)] px-4 py-3 text-sm text-[color:var(--danger)]">
           {error}
         </div>
       ) : null}

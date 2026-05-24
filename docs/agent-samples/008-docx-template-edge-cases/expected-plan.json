@@ -1,0 +1,1 @@
+{ "steps": ["inspect DOCX package", "find safe insertion point", "preserve package resources", "export or return structured error"] }

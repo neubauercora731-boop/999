@@ -1,0 +1,6 @@
+{
+  "exitCode": 0,
+  "stdoutMustContain": ["哈夫曼", "WPL"],
+  "stdoutMustNotOnlyDescribeTask": true,
+  "stderrAllowed": ""
+}

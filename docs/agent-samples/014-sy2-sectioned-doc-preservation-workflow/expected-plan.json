@@ -1,0 +1,14 @@
+{
+  "steps": [
+    "convert_doc_to_docx_baseline",
+    "parse_original_task_requirements",
+    "generate_or_reuse_code",
+    "run_code_with_real_stdout_stderr_exitCode_runtime",
+    "generate_command_output_screenshot",
+    "patch_original_docx_by_section_markers",
+    "validate_original_snippets_preserved",
+    "validate_final_docx_has_no_system_fill_label"
+  ],
+  "docxFillMode": "sectioned_lab_report",
+  "mustNotFallbackSilentlyToGeneratedReport": true
+}

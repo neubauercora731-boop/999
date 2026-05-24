@@ -1,0 +1,1 @@
+{ "steps": ["generate HTML/CSS/JS", "render in browser", "capture browser screenshot", "export DOCX"] }

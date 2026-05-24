@@ -378,7 +378,7 @@ export async function callMoonshotJson<T>(
       message: error instanceof Error ? error.message : "unknown_error",
     });
 
-    throw new Error("AI 返回格式异常，系统已尝试使用模板兜底。");
+    throw new Error("AI 返回格式异常，请重新生成一次。");
   }
 }
 

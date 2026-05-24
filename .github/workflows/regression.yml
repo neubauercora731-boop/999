@@ -1,0 +1,46 @@
+name: regression
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
+      MOONSHOT_API_KEY: ci-placeholder-moonshot-key
+      MOONSHOT_BASE_URL: https://api.moonshot.ai/v1
+      MOONSHOT_MODEL: kimi-k2.5
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci
+      - run: npx playwright install chromium
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run samples:check
+      # Public CI runs only privacy-safe fixtures. Local-only DOC/DOCX
+      # preservation samples remain ignored because they can contain real
+      # student/template documents.
+      - run: npm run samples:run -- --mode=local-fixture 002-real-run-screenshot-workflow
+      - run: npm run samples:run -- --mode=local-fixture 003-browser-page-screenshot-workflow
+      - run: npm run samples:run -- --mode=local-fixture 004-python-file-io-lab
+      - run: npm run samples:run -- --mode=local-fixture 005-python-oop-lab
+      - run: npm run samples:run -- --mode=local-fixture 006-python-data-analysis-lab
+      - run: npm run samples:run -- --mode=local-fixture 007-frontend-basic-lab
+      - run: npm run samples:run -- --mode=local-fixture 009-failed-run-recovery
+      - run: npm run samples:run -- --mode=local-fixture 010-no-screenshot-required
+      - run: npm run samples:run -- --mode=local-fixture 011-csv-dataset-doc-export-workflow
+      - run: npm run samples:run -- --mode=local-fixture 012-run-code-screenshot-trace-export-consistency
+      - run: npm run samples:run -- --mode=local-fixture 013-download-filename-encoding

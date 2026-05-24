@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -35,7 +35,26 @@ import {
   reportResultToMarkdown,
   taskPlanToParsedRequirement,
 } from "@/lib/agent/workflow";
-import { AGENT_ERROR_CODE, AgentWorkflowError } from "@/lib/agent/errors";
+import {
+  AGENT_ERROR_CODE,
+  AGENT_ERROR_MESSAGES,
+  AgentWorkflowError,
+} from "@/lib/agent/errors";
+import { inspectScreenshotRequirement } from "@/lib/reports/screenshot-requirements";
+import { generateBrowserPageScreenshots } from "@/lib/screenshots/browser-page-screenshot";
+import { generateCommandOutputScreenshot } from "@/lib/screenshots/command-output-screenshot";
+import {
+  extractScreenshotsFromReportJson,
+  isValidScreenshotEvidence,
+  mergeScreenshotEvidence,
+} from "@/lib/screenshots/evidence";
+import { uploadScreenshotEvidence } from "@/lib/screenshots/screenshot-storage";
+import type {
+  BrowserScreenshotAction,
+  FrontendScreenshotFile,
+  ScreenshotEvidence,
+} from "@/lib/screenshots/types";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { buildTaskContext } from "@/lib/tasks/context-builder";
 import {
   createTaskOutput,
@@ -59,6 +78,43 @@ type RunTaskResult = RunResult & {
   timedOut: boolean;
   message?: string;
   command?: string;
+};
+
+type PythonWorkspaceFile = {
+  path: string;
+  bytes: Uint8Array;
+};
+
+function collectReportScreenshotEvidence(taskDetail: Awaited<ReturnType<typeof buildTaskContext>>["taskDetail"]) {
+  return mergeScreenshotEvidence(
+    ...taskDetail.outputs.map((output) => extractScreenshotsFromReportJson(output.report_json)),
+  );
+}
+
+function summarizeScreenshotEvidenceForPrompt(
+  taskDetail: Awaited<ReturnType<typeof buildTaskContext>>["taskDetail"],
+) {
+  const screenshots = collectReportScreenshotEvidence(taskDetail);
+  if (screenshots.length === 0) return "none";
+
+  return screenshots
+    .map((screenshot) => {
+      const usable = isValidScreenshotEvidence(screenshot) ? "usable" : screenshot.status;
+      const location = screenshot.storagePath || screenshot.localPath || screenshot.signedUrl || "no-path";
+      return `${screenshot.kind}; status=${usable}; source=${screenshot.source}; location=${location}`;
+    })
+    .join("\n");
+}
+
+type FrontendBrowserRunParams = {
+  files: FrontendScreenshotFile[];
+  entryFile?: string;
+  viewport?: {
+    width?: number;
+    height?: number;
+  };
+  fullPage?: boolean;
+  actions?: BrowserScreenshotAction[];
 };
 
 function limitText(value: string, maxLength = MAX_STDIO) {
@@ -107,13 +163,56 @@ function getLatestRunResult(
 function mergedParsedText(files: Array<{ original_filename: string; parsed_text?: string | null; metadata: Record<string, unknown> }>) {
   return files
     .map((file) => {
+      const ingestion =
+        file.metadata?.document_ingestion &&
+        typeof file.metadata.document_ingestion === "object"
+          ? (file.metadata.document_ingestion as Record<string, unknown>)
+          : null;
+      const ingestionStructuredTask = ingestion?.structured_task;
+      const ingestionText =
+        typeof ingestion?.normalized_text === "string"
+          ? ingestion.normalized_text
+          : typeof ingestion?.raw_text === "string"
+            ? ingestion.raw_text
+            : "";
       const text =
+        (ingestionStructuredTask
+          ? `[document-ingestion structured_task]\n${JSON.stringify(ingestionStructuredTask, null, 2)}`
+          : "") ||
+        ingestionText ||
         file.parsed_text ||
+        (typeof file.metadata?.parsed_text === "string" ? file.metadata.parsed_text : "") ||
         (typeof file.metadata?.text_excerpt === "string" ? file.metadata.text_excerpt : "");
       return text ? `# ${file.original_filename}\n${text}` : "";
     })
     .filter(Boolean)
     .join("\n\n");
+}
+
+function getTaskFileRole(file: {
+  file_type: string;
+  original_filename: string;
+  metadata: Record<string, unknown>;
+}) {
+  if (typeof file.metadata?.file_role === "string") return file.metadata.file_role;
+  if (typeof file.metadata?.inferred_file_role === "string") {
+    return file.metadata.inferred_file_role;
+  }
+  if (file.file_type === "data") return "dataset";
+  if (file.original_filename.toLowerCase().endsWith(".csv")) return "dataset";
+  return file.file_type;
+}
+
+function isDatasetTaskFile(file: {
+  file_type: string;
+  original_filename: string;
+  metadata: Record<string, unknown>;
+}) {
+  return getTaskFileRole(file) === "dataset";
+}
+
+function safeWorkspaceFileName(fileName: string) {
+  return path.basename(fileName).replace(/[\\/:*?"<>|]+/g, "-") || "dataset.csv";
 }
 
 function buildRequirementSource(context: {
@@ -204,6 +303,153 @@ if __name__ == "__main__":
 `.trim();
 }
 
+function buildBfMatchCode() {
+  return `
+def bf_match(main_string, pattern):
+    """使用 BF 算法在主串中查找模式串，匹配成功返回起始下标，否则返回 -1。"""
+    if not isinstance(main_string, str) or not isinstance(pattern, str):
+        raise TypeError("主串和模式串必须都是字符串。")
+    if pattern == "":
+        return 0
+    if len(pattern) > len(main_string):
+        return -1
+
+    for start in range(len(main_string) - len(pattern) + 1):
+        matched = True
+        for offset in range(len(pattern)):
+            if main_string[start + offset] != pattern[offset]:
+                matched = False
+                break
+        if matched:
+            return start
+    return -1
+
+
+def format_result(main_string, pattern):
+    position = bf_match(main_string, pattern)
+    if position == -1:
+        return f"主串: {main_string}, 模式串: {pattern}, 匹配失败"
+    return f"主串: {main_string}, 模式串: {pattern}, 匹配成功, 起始下标: {position}"
+
+
+def main():
+    print("BF算法的实现")
+    test_cases = [
+        ("ababcabcacbab", "abcac"),
+        ("hello data structure", "data"),
+        ("aaaaab", "aab"),
+        ("abcdef", "gh"),
+        ("short", "longer_pattern"),
+    ]
+
+    for index, (main_string, pattern) in enumerate(test_cases, start=1):
+        print(f"测试{index}: {format_result(main_string, pattern)}")
+
+    try:
+        bf_match(123, "abc")
+    except TypeError as error:
+        print("非法输入测试:", error)
+
+
+if __name__ == "__main__":
+    main()
+`.trim();
+}
+
+function buildHuffmanCode() {
+  return `
+import heapq
+from dataclasses import dataclass, field
+from typing import Optional
+
+
+@dataclass(order=True)
+class HuffmanNode:
+    weight: int
+    order: int
+    name: str = field(compare=False, default="")
+    left: Optional["HuffmanNode"] = field(compare=False, default=None)
+    right: Optional["HuffmanNode"] = field(compare=False, default=None)
+
+
+def validate_weights(weights):
+    if not weights:
+        raise ValueError("权值集合不能为空")
+    for weight in weights:
+        if not isinstance(weight, int) or weight <= 0:
+            raise ValueError("所有权值必须为正整数")
+
+
+def build_huffman_tree(weights):
+    validate_weights(weights)
+    heap = [
+        HuffmanNode(weight=weight, order=index, name=f"W{index + 1}")
+        for index, weight in enumerate(weights)
+    ]
+    heapq.heapify(heap)
+    order = len(heap)
+    merge_steps = []
+
+    while len(heap) > 1:
+        left = heapq.heappop(heap)
+        right = heapq.heappop(heap)
+        parent = HuffmanNode(
+            weight=left.weight + right.weight,
+            order=order,
+            name=f"N{order}",
+            left=left,
+            right=right,
+        )
+        merge_steps.append((left.weight, right.weight, parent.weight))
+        heapq.heappush(heap, parent)
+        order += 1
+
+    return heap[0], merge_steps
+
+
+def calculate_wpl(node, depth=0):
+    if node.left is None and node.right is None:
+        return node.weight * depth
+    total = 0
+    if node.left is not None:
+        total += calculate_wpl(node.left, depth + 1)
+    if node.right is not None:
+        total += calculate_wpl(node.right, depth + 1)
+    return total
+
+
+def collect_codes(node, prefix="", result=None):
+    if result is None:
+        result = {}
+    if node.left is None and node.right is None:
+        result[node.name] = prefix or "0"
+        return result
+    if node.left is not None:
+        collect_codes(node.left, prefix + "0", result)
+    if node.right is not None:
+        collect_codes(node.right, prefix + "1", result)
+    return result
+
+
+def main():
+    weights = [1, 7, 4, 5, 9]
+    print("实验名称: 哈夫曼树的实现")
+    print("权值集合:", weights)
+    root, merge_steps = build_huffman_tree(weights)
+    print("构造过程:")
+    for index, (left, right, merged) in enumerate(merge_steps, start=1):
+        print(f"第{index}次合并: {left} + {right} = {merged}")
+    print("哈夫曼编码:")
+    for name, code in sorted(collect_codes(root).items()):
+        print(f"{name}: {code}")
+    print("带权路径长度WPL:", calculate_wpl(root))
+
+
+if __name__ == "__main__":
+    main()
+`.trim();
+}
+
 function buildGenericPythonCode(plan: TaskPlan) {
   return `
 def main():
@@ -227,6 +473,10 @@ function buildFallbackGeneratedCode(plan: TaskPlan, sourceText: string, warning?
   const source = `${plan.title}\n${sourceText}`.toLowerCase();
   const code = source.includes("冒泡") || source.includes("bubble")
     ? buildBubbleSortCode()
+    : source.includes("bf") || source.includes("模式匹配") || source.includes("串的模式")
+      ? buildBfMatchCode()
+    : source.includes("哈夫曼") || source.includes("huffman") || source.includes("wpl")
+      ? buildHuffmanCode()
     : source.includes("成绩") || source.includes("平均分") || source.includes("score")
       ? buildScoreStatsCode()
       : buildGenericPythonCode(plan);
@@ -245,6 +495,11 @@ function buildFallbackGeneratedCode(plan: TaskPlan, sourceText: string, warning?
 
 function containsDangerousPython(code: string) {
   const patterns = [
+    /\bimport\s+os\b/,
+    /\bfrom\s+os\s+import\b/,
+    /\bos\.(environ|getenv|putenv)\b/,
+    /\benviron\s*\[/,
+    /\bgetenv\s*\(/,
     /\bos\.system\s*\(/,
     /\bsubprocess\b/,
     /\bsocket\b/,
@@ -263,6 +518,38 @@ function containsDangerousPython(code: string) {
   return patterns.some((pattern) => pattern.test(code));
 }
 
+function pickProcessEnv(names: string[]) {
+  const env: Record<string, string> = {};
+  const entries = Object.entries(process.env);
+
+  for (const name of names) {
+    const match = entries.find(([key]) => key.toLowerCase() === name.toLowerCase());
+    if (match?.[1]) {
+      env[match[0]] = match[1];
+    }
+  }
+
+  return env;
+}
+
+function getSafePythonEnv() {
+  return {
+    ...pickProcessEnv([
+      "PATH",
+      "PATHEXT",
+      "SystemRoot",
+      "WINDIR",
+      "TEMP",
+      "TMP",
+      "LANG",
+      "LC_ALL",
+    ]),
+    PYTHONIOENCODING: "utf-8",
+    PYTHONUTF8: "1",
+    PYTHONNOUSERSITE: "1",
+  };
+}
+
 function getRunMessage(result: RunTaskResult) {
   if (result.success) return "代码运行成功。";
   if (result.errorType === "environment_error") {
@@ -277,11 +564,31 @@ function getRunMessage(result: RunTaskResult) {
   return "代码运行失败，请查看错误信息。";
 }
 
-async function runPythonWithCommand(command: string, code: string) {
+function isJsonFormatFallback(error: unknown) {
+  if (error instanceof AgentWorkflowError) {
+    return error.code === AGENT_ERROR_CODE.JSON_PARSE_FAILED;
+  }
+
+  return toUserFriendlyErrorMessage(error, "").includes(
+    AGENT_ERROR_MESSAGES[AGENT_ERROR_CODE.JSON_PARSE_FAILED],
+  );
+}
+
+async function runPythonWithCommand(
+  command: string,
+  code: string,
+  workspaceFiles: PythonWorkspaceFile[] = [],
+) {
   const startedAt = Date.now();
   const dir = await mkdtemp(path.join(tmpdir(), "lab-report-run-"));
   const file = path.join(dir, "main.py");
   await writeFile(file, code, "utf8");
+  for (const workspaceFile of workspaceFiles) {
+    if (workspaceFile.path.includes("..")) continue;
+    const targetPath = path.join(dir, ...workspaceFile.path.split(/[\\/]+/));
+    await mkdir(path.dirname(targetPath), { recursive: true });
+    await writeFile(targetPath, workspaceFile.bytes);
+  }
 
   return new Promise<RunTaskResult & { commandNotFound?: boolean }>((resolve) => {
     let stdout = "";
@@ -290,12 +597,7 @@ async function runPythonWithCommand(command: string, code: string) {
     let settled = false;
     const child = spawn(command, [file], {
       cwd: dir,
-      env: {
-        ...process.env,
-        PATH: process.env.PATH ?? "",
-        PYTHONIOENCODING: "utf-8",
-        PYTHONUTF8: "1",
-      },
+      env: getSafePythonEnv() as unknown as NodeJS.ProcessEnv,
       windowsHide: true,
     });
 
@@ -360,9 +662,12 @@ async function runPythonWithCommand(command: string, code: string) {
   });
 }
 
-async function runPython(code: string): Promise<RunTaskResult> {
+async function runPython(
+  code: string,
+  workspaceFiles: PythonWorkspaceFile[] = [],
+): Promise<RunTaskResult> {
   for (const command of ["python", "python3"]) {
-    const result = await runPythonWithCommand(command, code);
+    const result = await runPythonWithCommand(command, code, workspaceFiles);
     if (!result.commandNotFound) {
       return result;
     }
@@ -378,6 +683,42 @@ async function runPython(code: string): Promise<RunTaskResult> {
     errorType: "environment_error",
     message: "当前线上环境暂不支持真实 Python 运行，请复制代码到本地运行，或后续接入 Worker。",
   };
+}
+
+async function downloadDatasetWorkspaceFiles(
+  taskDetail: Awaited<ReturnType<typeof buildTaskContext>>["taskDetail"],
+  userId: string,
+): Promise<PythonWorkspaceFile[]> {
+  const datasetFiles = taskDetail.files.filter(isDatasetTaskFile);
+  if (datasetFiles.length === 0) return [];
+
+  const adminSupabase = createSupabaseAdminClient();
+  const workspaceFiles: PythonWorkspaceFile[] = [];
+
+  for (const file of datasetFiles) {
+    const expectedPrefix = `${userId}/${taskDetail.task.id}/`;
+    if (
+      file.storage_bucket !== "task-files" ||
+      !file.storage_path.startsWith(expectedPrefix)
+    ) {
+      throw new Error(`数据集文件路径不属于当前任务：${file.original_filename}`);
+    }
+
+    const { data, error } = await adminSupabase.storage
+      .from("task-files")
+      .download(file.storage_path);
+
+    if (error || !data) {
+      throw new Error(`数据集文件未能写入运行目录：${file.original_filename}`);
+    }
+
+    workspaceFiles.push({
+      path: safeWorkspaceFileName(file.original_filename),
+      bytes: new Uint8Array(await data.arrayBuffer()),
+    });
+  }
+
+  return workspaceFiles;
 }
 
 async function markFailure(
@@ -425,7 +766,9 @@ export async function analyzeTask(
       requirementText,
       taskBookText: context.taskBookText,
       notes: context.notes,
-      fileSummary: mergedParsedText(taskDetail.files),
+      fileSummary: [context.datasetSummary, mergedParsedText(taskDetail.files)]
+        .filter(Boolean)
+        .join("\n\n"),
     });
     const result = await callMoonshotJson<TaskPlan>({
       ...prompt,
@@ -438,7 +781,7 @@ export async function analyzeTask(
   } catch (error) {
     warning = toUserFriendlyErrorMessage(
       error,
-      "AI 返回格式异常，系统已尝试使用模板兜底。",
+      "AI 返回格式异常，请重新生成一次。",
     );
     plan = getFallbackTaskPlan({
       title: context.title,
@@ -532,7 +875,7 @@ export async function generatePythonCode(
   userId: string,
   taskId: string,
 ) {
-  const { context } = await buildTaskContext(supabase, userId, taskId);
+  const { context, taskDetail } = await buildTaskContext(supabase, userId, taskId);
   const requirement = context.parsedRequirement;
   if (!requirement) throw new Error("请先完成结构化分析并确认。");
 
@@ -564,6 +907,9 @@ export async function generatePythonCode(
       parsedRequirement: requirement,
       requirementText,
       taskBookText: context.taskBookText,
+      fileSummary: [context.datasetSummary, mergedParsedText(taskDetail.files)]
+        .filter(Boolean)
+        .join("\n\n"),
     });
     const result = await callMoonshotJson<GeneratedCode>({
       ...prompt,
@@ -612,6 +958,7 @@ export async function runTaskPythonCode(
   code?: string,
 ) {
   const { taskDetail } = await buildTaskContext(supabase, userId, taskId);
+  const workspaceFiles = await downloadDatasetWorkspaceFiles(taskDetail, userId);
   const resolvedCode =
     code?.trim() ||
     getLatestOutputValue<string>(taskDetail.outputs, "generated_code") ||
@@ -637,9 +984,55 @@ export async function runTaskPythonCode(
         errorType: "security_blocked",
         message: "代码包含潜在危险操作，系统已阻止运行。",
       }
-    : await runPython(resolvedCode);
+    : await runPython(resolvedCode, workspaceFiles);
 
   const message = getRunMessage(result);
+  const screenshotInspection = inspectScreenshotRequirement(taskDetail);
+  let screenshots: ScreenshotEvidence[] = [];
+  let screenshotWarning: string | null = null;
+  let screenshotMissing = screenshotInspection.screenshotRequired;
+  let screenshotMissingReason: string | null = screenshotInspection.screenshotRequired
+    ? "任务要求运行截图，但当前没有可用的真实运行截图。"
+    : null;
+
+  if (screenshotInspection.screenshotRequired) {
+    if (result.errorType === "environment_error") {
+      screenshotWarning = "代码未在当前环境完成真实运行，无法生成真实运行截图。";
+    } else {
+      try {
+        const createdAt = new Date().toISOString();
+        const image = await generateCommandOutputScreenshot({
+          taskId,
+          runId: run.id,
+          command: result.command || "python main.py",
+          filename: "main.py",
+          code: resolvedCode,
+          stdout: result.stdout,
+          stderr: result.stderr,
+          exitCode: result.exitCode,
+          durationMs: result.runtimeMs,
+          timedOut: result.timedOut,
+          createdAt,
+        });
+        const screenshot = await uploadScreenshotEvidence(createSupabaseAdminClient(), {
+          userId,
+          taskId,
+          runId: run.id,
+          image,
+          requiredByTask: true,
+          createdAt,
+        });
+        screenshots = [screenshot];
+        screenshotMissing = false;
+        screenshotMissingReason = null;
+      } catch (error) {
+        screenshotWarning = `代码已运行，但运行截图生成失败，请稍后重试或手动补充截图：${toUserFriendlyErrorMessage(
+          error,
+          "未知错误",
+        )}`;
+      }
+    }
+  }
 
   await createTaskOutput(supabase, {
     taskRunId: run.id,
@@ -653,7 +1046,14 @@ export async function runTaskPythonCode(
       timed_out: result.timedOut,
       runtime_ms: result.runtimeMs,
       error_type: result.errorType ?? null,
-      run_result: result as unknown as Record<string, unknown>,
+      run_result: { ...result, screenshots } as unknown as Record<string, unknown>,
+      dataset_files: workspaceFiles.map((file) => file.path),
+      screenshots,
+      screenshotRequired: screenshotInspection.screenshotRequired,
+      screenshotMissing,
+      screenshotMissingReason,
+      screenshotWarning,
+      screenshotMatchedKeywords: screenshotInspection.matchedKeywords,
     },
   });
   await updateTaskExecutionStatuses(supabase, taskId, {
@@ -665,7 +1065,197 @@ export async function runTaskPythonCode(
     status: result.success ? "success" : "error",
     errorMessage: result.success ? null : message,
   });
-  return result;
+  return {
+    ...result,
+    screenshots,
+    screenshotRequired: screenshotInspection.screenshotRequired,
+    screenshotMissing,
+    screenshotMissingReason,
+    screenshotWarning,
+  };
+}
+
+function normalizeBrowserViewport(viewport?: FrontendBrowserRunParams["viewport"]) {
+  return {
+    width: Math.max(320, Math.min(2560, Math.floor(viewport?.width ?? 1280))),
+    height: Math.max(240, Math.min(2000, Math.floor(viewport?.height ?? 720))),
+  };
+}
+
+function summarizeFrontendFiles(files: FrontendScreenshotFile[]) {
+  return files.map((file) => ({
+    path: file.path,
+    contentLength: file.content.length,
+  }));
+}
+
+function getEntryFileContent(files: FrontendScreenshotFile[], entryFile: string) {
+  return files.find((file) => file.path.replace(/\\/g, "/") === entryFile)?.content ?? "";
+}
+
+export async function runTaskFrontendBrowserScreenshot(
+  supabase: SupabaseClient,
+  userId: string,
+  taskId: string,
+  params: FrontendBrowserRunParams,
+) {
+  const { taskDetail } = await buildTaskContext(supabase, userId, taskId);
+  const files = Array.isArray(params.files) ? params.files : [];
+  if (files.length === 0) {
+    throw new Error("请提供前端文件包后再生成真实网页效果截图。");
+  }
+
+  const entryFile = params.entryFile?.trim() || "index.html";
+  const viewport = normalizeBrowserViewport(params.viewport);
+  const fullPage = params.fullPage ?? true;
+  const screenshotInspection = inspectScreenshotRequirement(taskDetail);
+  const createdAt = new Date().toISOString();
+  const startedAt = Date.now();
+  const run = await createTaskRun(supabase, {
+    taskId,
+    userId,
+    runType: TASK_RUN_TYPE.RUN_CODE,
+    modelName: "local-browser",
+    inputContext: {
+      run_mode: "frontend_browser",
+      entry_file: entryFile,
+      viewport,
+      full_page: fullPage,
+      action_count: params.actions?.length ?? 0,
+      file_count: files.length,
+      files: summarizeFrontendFiles(files),
+    },
+  });
+
+  let screenshots: ScreenshotEvidence[] = [];
+  let screenshotWarning: string | null = null;
+  let screenshotMissing = screenshotInspection.screenshotRequired;
+  let screenshotMissingReason: string | null = screenshotInspection.screenshotRequired
+    ? "任务要求真实网页效果截图，但当前没有可用的真实浏览器截图。"
+    : null;
+  let result: RunTaskResult;
+
+  try {
+    const images = await generateBrowserPageScreenshots({
+      taskId,
+      runId: run.id,
+      files,
+      entryFile,
+      viewport,
+      fullPage,
+      createdAt,
+      actions: params.actions,
+    });
+    if (images.length === 0) {
+      throw new Error("真实网页效果截图生成失败：没有生成任何截图。");
+    }
+
+    const adminSupabase = createSupabaseAdminClient();
+    screenshots = [];
+    for (const [index, image] of images.entries()) {
+      const label = image.label || `browser-${index + 1}`;
+      const screenshot = await uploadScreenshotEvidence(adminSupabase, {
+        userId,
+        taskId,
+        runId: run.id,
+        image,
+        requiredByTask: screenshotInspection.screenshotRequired,
+        createdAt,
+        type: "browser_page_screenshot",
+        source: "real_browser_render",
+        idPrefix: `browser-page-${index + 1}-${label}`,
+        description: `真实网页效果截图（${label}），来源于浏览器渲染结果。`,
+        browser: {
+          engine: "chromium",
+          viewport,
+          entryFile,
+          fullPage,
+        },
+      });
+      screenshots.push(screenshot);
+    }
+    screenshotMissing = false;
+    screenshotMissingReason = null;
+    result = {
+      success: true,
+      stdout: `真实浏览器渲染完成：${entryFile}\n截图类型：browser_page_screenshot\n截图数量：${screenshots.length}\n视口：${viewport.width}x${viewport.height}\nfullPage：${fullPage}`,
+      stderr: images.flatMap((image) => image.warnings).join("\n"),
+      runtimeMs: Date.now() - startedAt,
+      exitCode: 0,
+      timedOut: false,
+      command: "playwright chromium screenshot",
+    };
+  } catch (error) {
+    const message = toUserFriendlyErrorMessage(
+      error,
+      "真实网页效果截图生成失败，请检查入口文件和前端代码后重试。",
+    );
+    screenshotWarning = screenshotInspection.screenshotRequired
+      ? `任务要求截图，但真实网页效果截图生成失败：${message}`
+      : `真实网页效果截图生成失败：${message}`;
+    screenshotMissing = screenshotInspection.screenshotRequired;
+    screenshotMissingReason = screenshotInspection.screenshotRequired
+      ? "任务要求网页截图，但当前没有成功生成真实浏览器渲染截图。"
+      : null;
+    result = {
+      success: false,
+      stdout: "",
+      stderr: message,
+      runtimeMs: Date.now() - startedAt,
+      exitCode: null,
+      timedOut: false,
+      errorType: "runtime_error",
+      command: "playwright chromium screenshot",
+      message,
+    };
+  }
+
+  await createTaskOutput(supabase, {
+    taskRunId: run.id,
+    taskId,
+    userId,
+    reportJson: {
+      run_mode: "frontend_browser",
+      generated_code: getEntryFileContent(files, entryFile),
+      generated_code_meta: {
+        language: "HTML/CSS/JavaScript",
+        filename: entryFile,
+        files: summarizeFrontendFiles(files),
+      },
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exit_code: result.exitCode,
+      timed_out: result.timedOut,
+      runtime_ms: result.runtimeMs,
+      error_type: result.errorType ?? null,
+      run_result: { ...result, screenshots } as unknown as Record<string, unknown>,
+      screenshots,
+      screenshotRequired: screenshotInspection.screenshotRequired,
+      screenshotMissing,
+      screenshotMissingReason,
+      screenshotWarning,
+      screenshotMatchedKeywords: screenshotInspection.matchedKeywords,
+    },
+  });
+  await updateTaskExecutionStatuses(supabase, taskId, {
+    status: TASK_STATUS.CONFIRMED,
+    currentStep: TASK_CURRENT_STEP.CODE_RAN,
+    lastError: result.success ? null : result.message ?? result.stderr,
+  });
+  await finishTaskRun(supabase, run.id, {
+    status: result.success ? "success" : "error",
+    errorMessage: result.success ? null : result.message ?? result.stderr,
+  });
+
+  return {
+    ...result,
+    runMode: "frontend_browser",
+    screenshots,
+    screenshotRequired: screenshotInspection.screenshotRequired,
+    screenshotMissing,
+    screenshotMissingReason,
+    screenshotWarning,
+  };
 }
 
 export async function debugTaskPythonCode(
@@ -740,10 +1330,12 @@ export async function debugTaskPythonCode(
       debugResult = {
         fixed: false,
         fixedCode: "",
-        reason: toUserFriendlyErrorMessage(
-          error,
-          "代码自动修复失败，请查看错误信息或手动调整。",
-        ),
+        reason: isJsonFormatFallback(error)
+          ? "AI 自动修复返回格式异常，系统已保留原代码、stdout/stderr 和报告草稿，请根据技术详情手动调整或重新生成代码。"
+          : toUserFriendlyErrorMessage(
+              error,
+              "代码自动修复失败，请查看错误信息或手动调整。",
+            ),
         changedPoints: [],
       };
     }
@@ -814,6 +1406,7 @@ async function buildAndSaveReportDraft(
     options.finalRun ??
     getLatestRunResult(taskDetail.outputs, "final_run") ??
     firstRun;
+  const screenshotEvidence = collectReportScreenshotEvidence(taskDetail);
 
   let report = buildReportFallback({
     plan,
@@ -829,6 +1422,10 @@ async function buildAndSaveReportDraft(
       plan,
       parsedRequirement: requirement,
       generatedCode,
+      fileSummary: [context.datasetSummary, mergedParsedText(taskDetail.files)]
+        .filter(Boolean)
+        .join("\n\n"),
+      screenshotEvidenceSummary: summarizeScreenshotEvidenceForPrompt(taskDetail),
       firstRun: firstRun ?? undefined,
       debugResult: debugResult ?? undefined,
       finalRun: finalRun ?? undefined,
@@ -879,6 +1476,7 @@ async function buildAndSaveReportDraft(
       first_run: firstRun ? (firstRun as unknown as Record<string, unknown>) : null,
       debug_result: debugResult ? (debugResult as unknown as Record<string, unknown>) : null,
       final_run: finalRun ? (finalRun as unknown as Record<string, unknown>) : null,
+      screenshots: screenshotEvidence,
     },
     reportMarkdown: markdown,
   });
@@ -1019,13 +1617,10 @@ export async function runAgentWorkflow(
     result.success =
       finalRun.success ||
       finalRun.errorType === "environment_error" ||
-      Boolean(markdown && !debugResult);
+      Boolean(markdown);
 
     if (!result.success) {
-      result.errorMessage =
-        debugResult && !debugResult.fixed
-          ? debugResult.reason
-          : getRunMessage(finalRun);
+      result.errorMessage = getRunMessage(finalRun);
     }
 
     return result;

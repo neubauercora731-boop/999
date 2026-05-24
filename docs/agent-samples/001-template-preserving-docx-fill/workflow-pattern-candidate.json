@@ -1,0 +1,98 @@
+{
+  "id": "template_preserving_docx_fill",
+  "name": "保留原文档内容与格式的任务书填充工作流",
+  "description": "适用于用户上传老师任务书、实验报告模板或其他原始 DOC/DOCX 后，在不修改任何原文档自带内容的前提下，只向可靠定位的任务块或答案单元格追加生成内容。",
+  "defaultPolicy": {
+    "preserveOriginalDocument": true,
+    "rewriteWholeDocument": false,
+    "insertionMode": "append_under_task",
+    "originalDocumentPolicy": "immutable_except_explicit_fill_cells"
+  },
+  "matchKeywords": [
+    "doc",
+    "docx",
+    "任务书",
+    "实验报告模板",
+    "报告模板",
+    "保留格式",
+    "保留原文档",
+    "填写答案",
+    "运行截图"
+  ],
+  "requiredSteps": [
+    "load_original_doc_or_docx",
+    "convert_doc_to_docx_baseline_if_safe",
+    "inspect_docx_structure",
+    "detect_all_original_content_as_immutable",
+    "detect_fillable_task_blocks_or_answer_cells",
+    "map_outputs_to_fillable_locations",
+    "append_system_content_only",
+    "insert_real_screenshot_if_required",
+    "preserve_headers_footers_styles_numbering_media",
+    "validate_original_snippets_across_document",
+    "validate_no_unintended_original_content_removed",
+    "export_patched_docx"
+  ],
+  "allowedWrites": [
+    "append_code_under_task_when_required",
+    "append_run_result_under_task_when_required",
+    "append_analysis_under_task_when_required",
+    "insert_real_screenshot_under_task_or_into_answer_cell",
+    "fill_problem_thinking_answer_cell_when_matched"
+  ],
+  "replacementException": {
+    "allowed": true,
+    "scope": "only_inside_reliably_identified_fillable_answer_cell",
+    "condition": "the original placeholder/instruction explicitly says it should be removed before submission"
+  },
+  "llmSteps": [
+    "analyze_task_requirements",
+    "map_generated_report_sections_to_task_blocks",
+    "summarize_missing_screenshot_or_ambiguous_insertion_risks"
+  ],
+  "toolSteps": [
+    "unzip_docx_package",
+    "read_word_document_xml",
+    "patch_word_document_xml_only",
+    "validate_docx_preservation_after_patch",
+    "zip_docx_package",
+    "run_lint",
+    "run_build"
+  ],
+  "userConfirmSteps": [
+    "confirm_insertion_point_when_ambiguous",
+    "confirm_template_file_when_multiple_docx_files_exist",
+    "confirm_generated_report_mode_when_no_original_template_is_available",
+    "confirm_real_screenshot_evidence"
+  ],
+  "qualityRules": [
+    "不能重写整份文档",
+    "不能修改任何原文档自带内容",
+    "不能只保护项目任务书/项目计划/填表说明等少数标题，所有原文内容都默认受保护",
+    "不能修改首页封面、班级、姓名、学号、课程名、老师要求、表格、页眉页脚、分页、图片或样式",
+    "必须只在任务下方或对应答案单元格追加生成内容",
+    "交付 DOC/DOCX 标签不得包含“系统填写”四个字",
+    "替换原有占位/说明文字只能发生在明确可填写区域，并且原文明确要求提交时删除该占位/说明",
+    "插入内容必须有清晰系统标签",
+    "如果任务要求截图，必须插入真实截图或标记截图缺失",
+    "如果无法定位插入点，必须请求用户确认"
+  ],
+  "failureHandling": [
+    "如果原始文件不是标准 DOCX 包，停止 patch 并返回中文错误",
+    "如果原始文件是 .doc，先尝试安全转换为 DOCX baseline；转换失败时不能生成伪原格式文档",
+    "如果 word/document.xml 缺失，停止 patch 并返回中文错误",
+    "如果找不到可靠任务块或答案单元格，停止 patch 并要求用户确认插入位置",
+    "如果导出后原文关键片段缺失，阻止输出破坏格式的 DOCX",
+    "如果截图要求存在但没有真实截图，标记 screenshotMissing=true，不伪造截图"
+  ],
+  "regressionLessons": [
+    {
+      "source": "sy.doc + sy1.csv",
+      "lesson": "模板要求截图形式展示时，不应把代码正文和 stdout 文本插入正文；应插入真实运行截图和说明，并把问题及思考填入对应右侧单元格。"
+    },
+    {
+      "source": "sy.doc + sy1.csv",
+      "lesson": "项目任务书、项目计划、填表说明只是保护规则的样例；所有原始文档内容都要默认保留。"
+    }
+  ]
+}

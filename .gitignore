@@ -16,7 +16,20 @@
 # local generated artifacts
 /output/
 /tmp/
+/.tmp/
 /.playwright-cli/
+.tmp-dev-*.log
+.gstack/
+docs/agent-samples/**/artifacts/
+docs/agent-samples/**/expected-docx/*.docx
+docs/agent-samples/**/input-files/*.doc
+docs/agent-samples/**/input-files/*.docx
+
+# local user documents and deployment backups
+/*.doc
+/*.docx
+/*.pdf
+/lab-report-assistant-backups/
 
 # next.js
 /.next/

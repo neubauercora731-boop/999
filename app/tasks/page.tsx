@@ -24,6 +24,7 @@ import { listTasks } from "@/lib/tasks/repository";
 import { formatDateTime, toErrorMessage } from "@/lib/utils";
 
 import { TaskListActions } from "./task-list-actions";
+import { SignOutButton } from "./sign-out-button";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export default async function TasksPage() {
             <SectionHeader
               eyebrow="Tasks"
               title="我的任务"
-              description="任务列表暂时无法加载。"
+              description="任务列表暂时无法加载，请稍后重试。"
               action={<ButtonLink href="/tasks/new">新建任务</ButtonLink>}
             />
             <Card>
@@ -71,19 +72,20 @@ export default async function TasksPage() {
             <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
               <div className="space-y-5">
                 <div className="flex flex-wrap gap-2">
-                  <Badge tone="primary">Workspace</Badge>
-                  <Badge tone="accent">P0 Python 闭环</Badge>
+                  <Badge tone="primary">任务中心</Badge>
+                  <Badge tone="success">证据链可追踪</Badge>
                 </div>
                 <div className="space-y-3">
-                  <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[color:var(--accent)]">
+                  <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[color:var(--accent)]">
                     My Tasks
                   </p>
-                  <h1 className="font-display text-5xl leading-[0.96] text-[color:var(--foreground)] sm:text-6xl">
-                    从 uploaded 到 exported，
-                    <span className="block text-[color:var(--primary)]">每一步都可继续处理。</span>
+                  <h1 className="font-display text-4xl font-semibold leading-tight text-[color:var(--foreground)] sm:text-5xl">
+                    从上传到导出，
+                    <span className="block text-[color:var(--primary)]">每个实验任务都可继续处理。</span>
                   </h1>
                   <p className="max-w-2xl text-sm leading-8 text-[color:var(--muted)] sm:text-base">
-                    这里保存每一次正式任务的要求、代码、运行结果和报告草稿。失败任务也会保留错误原因，方便重新生成。
+                    这里保存正式任务的任务书、文件角色识别、运行结果、截图证据、Trace
+                    和 DOCX 导出状态。失败任务也会保留原因，方便继续排查。
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-3">
@@ -97,23 +99,23 @@ export default async function TasksPage() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-3">
-                <Card className="bg-white/75">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--muted)]">
+                <Card className="bg-white/78">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--muted)]">
                     Total
                   </p>
-                  <p className="mt-2 text-4xl font-semibold tracking-[-0.05em]">{tasks.length}</p>
+                  <p className="mt-2 text-4xl font-semibold">{tasks.length}</p>
                 </Card>
-                <Card className="bg-white/75">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--muted)]">
+                <Card className="bg-white/78">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--muted)]">
                     Generated
                   </p>
-                  <p className="mt-2 text-4xl font-semibold tracking-[-0.05em]">{generated}</p>
+                  <p className="mt-2 text-4xl font-semibold">{generated}</p>
                 </Card>
-                <Card className="bg-white/75">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--muted)]">
+                <Card className="bg-white/78">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--muted)]">
                     Exported
                   </p>
-                  <p className="mt-2 text-4xl font-semibold tracking-[-0.05em]">{exported}</p>
+                  <p className="mt-2 text-4xl font-semibold">{exported}</p>
                 </Card>
               </div>
             </div>
@@ -123,14 +125,15 @@ export default async function TasksPage() {
         <AppSection className="space-y-6 pt-0">
           <AppToolbar>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--accent)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--accent)]">
                 Current Account
               </p>
               <p className="mt-1 text-base font-semibold">{user.email}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge tone="warning">待确认 {needsConfirm}</Badge>
               <Badge tone="success">已导出 {exported}</Badge>
+              <SignOutButton />
             </div>
           </AppToolbar>
         </AppSection>
@@ -139,7 +142,7 @@ export default async function TasksPage() {
           {tasks.length === 0 ? (
             <EmptyState
               title="还没有任务"
-              description="上传一份 Python 实验任务书，系统会先解析，再由你确认进入工作台。"
+              description="上传一份实验任务书，系统会先识别文件角色并解析任务，再进入 Agent 工作台。"
               actionLabel="新建任务"
               actionHref="/tasks/new"
             />
@@ -154,7 +157,7 @@ export default async function TasksPage() {
                     <Badge tone="neutral">
                       {getTaskCurrentStepLabel(task.current_step)}
                     </Badge>
-                    <Badge tone="primary">Python 实验报告</Badge>
+                    <Badge tone="primary">实验报告任务</Badge>
                   </div>
                   <div>
                     <CardTitle className="text-2xl">{task.title}</CardTitle>
@@ -166,15 +169,15 @@ export default async function TasksPage() {
                     {task.description || "暂无任务摘要"}
                   </p>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[1rem] border border-[color:var(--border)] bg-white/65 px-4 py-3 text-sm">
+                    <div className="rounded-lg border border-[color:var(--border)] bg-white/65 px-4 py-3 text-sm">
                       创建：{formatDateTime(task.created_at)}
                     </div>
-                    <div className="rounded-[1rem] border border-[color:var(--border)] bg-white/65 px-4 py-3 text-sm">
+                    <div className="rounded-lg border border-[color:var(--border)] bg-white/65 px-4 py-3 text-sm">
                       更新：{formatDateTime(task.updated_at)}
                     </div>
                   </div>
                   {task.last_error ? (
-                    <div className="rounded-[1rem] border border-[color:var(--danger)]/30 bg-[color:var(--danger-soft)] px-4 py-3 text-sm leading-6 text-[color:var(--danger)]">
+                    <div className="rounded-lg border border-[color:var(--danger)]/30 bg-[color:var(--danger-soft)] px-4 py-3 text-sm leading-6 text-[color:var(--danger)]">
                       失败原因：{task.last_error}
                     </div>
                   ) : null}

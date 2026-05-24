@@ -1,0 +1,10 @@
+{
+  "runner": "python",
+  "steps": [
+    "read fixture code",
+    "run Python code",
+    "capture stdout/stderr/exitCode/runtime",
+    "generate command_output_screenshot",
+    "evaluate quality"
+  ]
+}

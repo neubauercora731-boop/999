@@ -15,6 +15,7 @@ import {
 } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import type { ParsedRequirement } from "@/lib/ai/types";
+import { inspectScreenshotRequirement } from "@/lib/reports/screenshot-requirements";
 import { getLatestParsedRequirement, getLatestReportMarkdown } from "@/lib/tasks/context";
 import { getTaskDetail } from "@/lib/tasks/repository";
 import {
@@ -58,7 +59,7 @@ export default async function TaskWorkbenchPage({ params }: PageProps) {
             <SectionHeader
               eyebrow="Workbench"
               title="任务工作台加载失败"
-              description="请返回任务列表或稍后重试。"
+              description="请返回任务列表，或稍后重试。"
               action={<ButtonLink href="/tasks">返回任务列表</ButtonLink>}
             />
             <Card>
@@ -78,6 +79,7 @@ export default async function TaskWorkbenchPage({ params }: PageProps) {
   const code = latestJsonValue<string>(detail.outputs, "generated_code");
   const stdout = latestJsonValue<string>(detail.outputs, "stdout");
   const stderr = latestJsonValue<string>(detail.outputs, "stderr");
+  const screenshotInspection = inspectScreenshotRequirement(detail);
   const flowStep = getTaskFlowStepIndex(detail.task.status);
   const taskInputSummary =
     detail.input?.requirement_text ||
@@ -97,43 +99,43 @@ export default async function TaskWorkbenchPage({ params }: PageProps) {
                   <Badge tone={getTaskStatusTone(detail.task.status)}>
                     {getTaskStatusLabel(detail.task.status)}
                   </Badge>
-                  <Badge tone="accent">Python P1 Agent Workbench</Badge>
+                  <Badge tone="primary">Agent 工作台</Badge>
+                  <Badge tone="success">真实运行证据</Badge>
                 </div>
                 <div className="space-y-3">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--accent)]">
                     Task Workbench
                   </p>
-                  <h1 className="font-display text-5xl leading-[0.96] text-[color:var(--foreground)] sm:text-6xl">
+                  <h1 className="font-display text-4xl font-semibold leading-tight text-[color:var(--foreground)] sm:text-5xl">
                     {detail.task.title}
                   </h1>
                   <p className="max-w-2xl text-sm leading-8 text-[color:var(--muted)] sm:text-base">
-                    支持一键 Agent 执行流：生成代码、运行验证、失败后自动修复一次，并基于真实运行结果整理报告草稿。
+                    在这里完成代码生成、真实运行、截图证据、Trace、质量检查和 DOCX
+                    原模板导出。系统不会伪造运行结果或截图。
                   </p>
                 </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
-                <Card className="bg-white/74">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                <Card className="bg-white/78">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--muted)]">
                     Files
                   </p>
-                  <p className="mt-2 text-4xl font-semibold tracking-[-0.05em]">
-                    {detail.files.length}
-                  </p>
+                  <p className="mt-2 text-4xl font-semibold">{detail.files.length}</p>
                 </Card>
-                <Card className="bg-white/74">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
+                <Card className="bg-white/78">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--muted)]">
                     Tasks
                   </p>
-                  <p className="mt-2 text-4xl font-semibold tracking-[-0.05em]">
+                  <p className="mt-2 text-4xl font-semibold">
                     {analysis?.coding_tasks.length ?? 0}
                   </p>
                 </Card>
-                <Card className="bg-white/74">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                    Output
+                <Card className="bg-white/78">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--muted)]">
+                    Report
                   </p>
                   <p className="mt-2 text-base font-semibold">
-                    {report ? "草稿已保存" : "待生成"}
+                    {report ? "草稿已保存" : "等待生成"}
                   </p>
                 </Card>
               </div>
@@ -152,7 +154,7 @@ export default async function TaskWorkbenchPage({ params }: PageProps) {
             <Card className="space-y-4">
               <CardTitle>请先完成结构化解析</CardTitle>
               <CardDescription>
-                工作台需要用户确认后的 analysis_json 才能生成 Python 代码。
+                工作台需要已确认的 analysis_json，才能继续生成代码、运行和导出。
               </CardDescription>
               <ButtonLink href={`/tasks/${id}/analysis`}>进入解析确认页</ButtonLink>
             </Card>
@@ -165,6 +167,9 @@ export default async function TaskWorkbenchPage({ params }: PageProps) {
               initialStderr={stderr}
               initialReport={report}
               taskInputSummary={taskInputSummary}
+              initialScreenshotRequired={screenshotInspection.screenshotRequired}
+              initialScreenshotMissing={screenshotInspection.screenshotMissing}
+              initialScreenshotEvidenceCount={screenshotInspection.evidenceFileNames.length}
             />
           )}
         </AppSection>

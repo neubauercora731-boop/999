@@ -1,0 +1,10 @@
+{
+  "steps": [
+    "Convert .doc to .docx baseline when safe conversion is available.",
+    "Patch the original-format baseline instead of generating a new report.",
+    "Insert code as line-oriented DOCX paragraphs under the code marker.",
+    "Insert the real command_output_screenshot under the result-analysis marker.",
+    "Insert problem thinking under the problem-thinking marker.",
+    "Validate original snippets, screenshot media, and code paragraph formatting."
+  ]
+}

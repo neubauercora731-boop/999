@@ -1,0 +1,8 @@
+{
+  "success": true,
+  "checks": [
+    "Content-Disposition ASCII-only",
+    "filename fallback present",
+    "filename* present"
+  ]
+}

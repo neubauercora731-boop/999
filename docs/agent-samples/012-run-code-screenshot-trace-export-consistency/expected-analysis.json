@@ -1,0 +1,5 @@
+{
+  "workflowType": "python_algorithm_lab",
+  "screenshotRequired": true,
+  "requiredEvidence": ["stdout", "stderr", "exitCode", "runtime", "command_output_screenshot"]
+}

@@ -1,0 +1,7 @@
+{
+  "runner": "python",
+  "expectedStatus": "success",
+  "exitCode": 0,
+  "stdoutIncludes": ["Before:", "After:", "Check: True"],
+  "stderr": ""
+}

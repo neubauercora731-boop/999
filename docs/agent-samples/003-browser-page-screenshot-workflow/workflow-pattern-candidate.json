@@ -1,0 +1,52 @@
+{
+  "id": "browser_page_screenshot_workflow",
+  "name": "真实网页效果截图工作流",
+  "description": "适用于前端、HTML、CSS、JavaScript 或网页实验任务，通过安全静态预览 Runner 打开真实浏览器并生成 PNG 证据截图。",
+  "requiredSteps": [
+    "detect_frontend_task",
+    "collect_frontend_files",
+    "validate_preview_file_paths",
+    "create_isolated_preview_directory",
+    "serve_static_preview_on_localhost",
+    "open_clean_playwright_chromium_context",
+    "block_external_network_and_cookies",
+    "render_entry_file",
+    "capture_browser_page_screenshot",
+    "upload_png_to_task_files_storage",
+    "save_browser_screenshot_metadata",
+    "insert_browser_screenshot_into_docx",
+    "fallback_mark_screenshot_missing"
+  ],
+  "toolSteps": [
+    "write_temp_files",
+    "start_local_http_server",
+    "playwright_page_goto",
+    "playwright_page_screenshot",
+    "supabase_storage_upload",
+    "docx_patch_insert_image"
+  ],
+  "llmSteps": [
+    "identify whether task expects webpage screenshot",
+    "generate frontend code or static artifacts",
+    "explain screenshot limitations in report"
+  ],
+  "userConfirmSteps": [
+    "confirm the chosen frontend entry file",
+    "confirm screenshot is acceptable for final submission when task has strict visual requirements"
+  ],
+  "qualityRules": [
+    "截图必须来自真实浏览器渲染",
+    "不能使用 AI 生成图片冒充网页效果",
+    "不能执行用户上传的任意 package.json scripts",
+    "不能带入 Supabase 登录 cookies 或密钥",
+    "如果截图失败且任务要求截图，必须标记截图缺失",
+    "DOCX 导出仍必须保留原任务书格式"
+  ],
+  "failureHandling": [
+    "入口文件缺失时返回中文错误",
+    "Playwright Chromium 缺失时提示安装命令",
+    "页面脚本错误记录到 warnings/stderr",
+    "外部资源请求被阻断并记录 warning",
+    "截图失败时不伪造图片"
+  ]
+}

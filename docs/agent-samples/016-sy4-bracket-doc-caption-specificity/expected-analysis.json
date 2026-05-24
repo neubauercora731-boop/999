@@ -1,0 +1,11 @@
+{
+  "workflowType": "python_algorithm_lab",
+  "taskTitle": "栈的应用-括号匹配实验",
+  "requiresScreenshot": true,
+  "requiredInsertTargets": [
+    "//实现代码：",
+    "实验结果与分析",
+    "问题及思考"
+  ],
+  "mustPreserveOriginalTemplate": true
+}

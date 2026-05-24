@@ -1,0 +1,6 @@
+{
+  "exitCode": 0,
+  "stdoutContains": ["数据文件: data.csv", "平均分: 88.75", "最高分: 赵六 95", "最低分: 王五 78"],
+  "stderr": "",
+  "datasetFilesInWorkingDirectory": ["data.csv"]
+}

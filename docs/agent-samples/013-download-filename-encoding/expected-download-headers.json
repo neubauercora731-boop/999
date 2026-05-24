@@ -1,0 +1,10 @@
+{
+  "contentDispositionMustContain": [
+    "attachment",
+    "filename=\"lab-report.docx\"",
+    "filename*=UTF-8''"
+  ],
+  "contentDispositionMustNotContainRawChinese": true,
+  "downloadFilename": "当前任务报告.docx",
+  "fallbackFilename": "lab-report.docx"
+}

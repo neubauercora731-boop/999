@@ -1,0 +1,10 @@
+{
+  "steps": [
+    "run Python code",
+    "capture stdout/stderr/exitCode/runtime",
+    "generate command_output_screenshot",
+    "attach screenshot evidence to trace",
+    "evaluate quality",
+    "export DOCX with screenshot evidence"
+  ]
+}

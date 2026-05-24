@@ -1,0 +1,7 @@
+{
+  "runner": "python",
+  "mustRunRealCode": true,
+  "requiredFields": ["stdout", "stderr", "exitCode", "runtimeMs", "command"],
+  "expectedExitCode": 0,
+  "screenshotKind": "command_output_screenshot"
+}

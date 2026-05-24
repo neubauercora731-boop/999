@@ -1,0 +1,26 @@
+{
+  "sample_id": "015-sy3-huffman-doc-rerun-screenshot-dedup",
+  "title": "sy3 Huffman DOC rerun screenshot dedup",
+  "task_type": "python_algorithm_lab",
+  "required_runners": ["python", "docx_export", "quality_evaluation"],
+  "required_evidence": ["command_output_screenshot", "stdout", "stderr", "exitCode", "runtime", "docx_export"],
+  "docx_mode": "patch_original_docx",
+  "must_preserve_original_docx": true,
+  "must_not_fake_screenshot": true,
+  "screenshot_policy": {
+    "required": true,
+    "allowed_kinds": ["command_output_screenshot"],
+    "missing_behavior": "insert_missing_screenshot_marker"
+  },
+  "expected_failure_behavior": {
+    "run_failed": "debug_once_then_record",
+    "screenshot_failed": "insert_missing_screenshot_marker",
+    "export_failed": "return_structured_error"
+  },
+  "quality_checks": {
+    "task_requirements_covered": true,
+    "code_actually_runs": true,
+    "evidence_attached_or_missing_marked": true,
+    "docx_structure_preserved": true
+  }
+}

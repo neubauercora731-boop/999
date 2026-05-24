@@ -1,0 +1,6 @@
+{
+  "experiment_title": "哈夫曼树的实现",
+  "language": "Python",
+  "screenshotRequired": true,
+  "expected_keywords": ["哈夫曼", "WPL", "权值集合", "1, 7, 4, 5, 9"]
+}

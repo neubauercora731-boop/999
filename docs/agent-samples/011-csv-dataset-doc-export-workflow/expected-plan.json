@@ -1,0 +1,10 @@
+{
+  "steps": [
+    "parse task-book text",
+    "keep CSV as dataset",
+    "generate Python csv-standard-library code",
+    "run code with data.csv in working directory",
+    "capture command-output screenshot",
+    "export generated DOCX when no patchable DOCX template exists"
+  ]
+}

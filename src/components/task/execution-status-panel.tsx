@@ -16,8 +16,8 @@ const statusMeta: Record<
   ExecutionStepStatus,
   { label: string; tone: "neutral" | "primary" | "success" | "danger" }
 > = {
-  waiting: { label: "等待中", tone: "neutral" },
-  running: { label: "执行中", tone: "primary" },
+  waiting: { label: "未开始", tone: "neutral" },
+  running: { label: "进行中", tone: "primary" },
   success: { label: "已完成", tone: "success" },
   error: { label: "失败", tone: "danger" },
 };
@@ -25,33 +25,33 @@ const statusMeta: Record<
 export const defaultExecutionSteps = [
   {
     id: "understand",
-    title: "正在理解实验要求...",
-    description: "读取任务目标、报告章节和交付边界。",
+    title: "理解实验要求",
+    description: "读取任务目标、报告章节、交付边界和截图要求。",
   },
   {
     id: "plan",
-    title: "正在拆解任务步骤...",
-    description: "把实验要求整理为可执行的代码与报告步骤。",
+    title: "拆解任务步骤",
+    description: "把实验要求整理成可执行的代码、运行和报告步骤。",
   },
   {
     id: "code",
-    title: "正在生成实验代码...",
-    description: "生成可运行、可解释的 Python 实验代码。",
+    title: "生成实验代码",
+    description: "生成可运行、可解释的实验代码。",
   },
   {
     id: "run",
-    title: "正在运行代码并验证结果...",
-    description: "保留 stdout/stderr 作为实验结果证据。",
+    title: "真实运行并验证结果",
+    description: "捕获 stdout、stderr、exitCode 和 runtime 作为证据。",
   },
   {
     id: "report",
-    title: "正在整理实验报告...",
-    description: "把任务要求、代码、结果和分析整理为报告草稿。",
+    title: "整理实验报告",
+    description: "基于任务、代码、运行结果和截图证据整理报告草稿。",
   },
   {
     id: "done",
-    title: "已完成",
-    description: "用户可以继续编辑、复制或导出报告。",
+    title: "完成交付准备",
+    description: "用户可以继续编辑、保存或导出 DOCX。",
   },
 ] as const;
 
@@ -65,48 +65,48 @@ export function createWaitingExecutionSteps(): ExecutionStep[] {
 export const agentExecutionSteps = [
   {
     id: "analyze",
-    title: "正在分析任务",
-    description: "读取原始要求、材料摘要和已确认的结构化信息。",
+    title: "任务分析",
+    description: "读取原始要求、上传材料和已确认的结构化信息。",
   },
   {
     id: "plan",
-    title: "正在拆解执行计划",
-    description: "把实验目标拆成代码生成、运行验证和报告整理步骤。",
+    title: "执行计划",
+    description: "拆成代码生成、真实运行、截图证据、报告整理和导出步骤。",
   },
   {
     id: "code",
-    title: "正在生成实验代码",
-    description: "优先生成单文件 main.py，内置示例数据并保留清晰 stdout。",
+    title: "代码生成",
+    description: "优先生成单文件 main.py，避免不必要的交互输入。",
   },
   {
     id: "run",
-    title: "正在运行代码",
-    description: "捕获 stdout、stderr、耗时和错误类型。",
+    title: "真实运行",
+    description: "捕获 stdout、stderr、耗时、错误类型和截图证据。",
   },
   {
     id: "debug",
-    title: "必要时自动修复一次",
+    title: "自动修复一次",
     description: "首次运行失败时，根据错误信息尝试生成完整修复代码。",
   },
   {
     id: "rerun",
-    title: "正在重新运行",
-    description: "如果修复成功，再次运行修复后的代码。",
+    title: "重新运行",
+    description: "如果修复成功，再运行修复后的代码并保留结果。",
   },
   {
     id: "report",
-    title: "正在生成报告草稿",
-    description: "报告会引用真实 stdout；无法运行时会写明环境限制。",
+    title: "报告草稿",
+    description: "报告必须引用真实 stdout 和截图状态。",
   },
   {
     id: "save",
-    title: "正在保存结果",
+    title: "保存结果",
     description: "保存代码、运行证据、调试说明和报告草稿。",
   },
   {
     id: "done",
-    title: "已完成",
-    description: "用户可以继续编辑、复制或导出 DOCX。",
+    title: "交付准备完成",
+    description: "可以进行质量检查并导出 DOCX。",
   },
 ] as const;
 
@@ -118,8 +118,8 @@ export function createWaitingAgentExecutionSteps(): ExecutionStep[] {
 }
 
 export function ExecutionStatusPanel({
-  title = "AI 执行进度",
-  description = "系统会把任务拆成清楚的执行步骤，失败时停在对应步骤并给出原因。",
+  title = "Agent 执行进度",
+  description = "系统会把任务拆成清晰步骤；失败时停在对应步骤并保留原因。",
   steps,
 }: {
   title?: string;
@@ -141,7 +141,7 @@ export function ExecutionStatusPanel({
             <div
               key={step.id}
               className={clsx(
-                "grid gap-3 rounded-[1.1rem] border px-4 py-4 transition",
+                "grid gap-3 rounded-lg border px-4 py-4 transition",
                 step.status === "running"
                   ? "border-[color:var(--primary)]/35 bg-[color:var(--primary-soft)]"
                   : "border-[color:var(--border)] bg-white/64",
@@ -181,7 +181,7 @@ export function ExecutionStatusPanel({
               </div>
 
               {step.detail ? (
-                <p className="rounded-[0.9rem] bg-white/62 px-3 py-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
+                <p className="rounded-lg bg-white/70 px-3 py-2 text-sm leading-6 text-[color:var(--foreground-soft)]">
                   {step.detail}
                 </p>
               ) : null}

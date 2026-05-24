@@ -19,7 +19,7 @@ export const AGENT_ERROR_MESSAGES: Record<AgentErrorCode, string> = {
   [AGENT_ERROR_CODE.AI_CALL_FAILED]:
     "AI 生成失败，请检查 API Key、余额或网络状态。",
   [AGENT_ERROR_CODE.JSON_PARSE_FAILED]:
-    "AI 返回格式异常，系统已尝试使用模板兜底。",
+    "AI 返回格式异常，请重新生成一次。",
   [AGENT_ERROR_CODE.CODE_GENERATE_FAILED]:
     "代码生成失败，请调整任务要求后重试。",
   [AGENT_ERROR_CODE.CODE_RUN_FAILED]:

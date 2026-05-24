@@ -14,9 +14,13 @@ function formatFiles(context: BuiltTaskContext) {
       const excerpt = file.excerpt ? `\nExcerpt:\n${file.excerpt}` : "";
       return [
         `- Type: ${file.fileType}`,
+        `  Role: ${file.role}`,
         `  File name: ${file.fileName}`,
         `  MIME: ${file.mimeType ?? "unknown"}`,
         `  Storage path: ${file.storagePath}`,
+        file.datasetPreview
+          ? `  Dataset columns: ${(file.datasetPreview.columns ?? []).join(", ") || "unknown"}\n  Dataset preview:\n${file.datasetPreview.rawTextPreview ?? ""}`
+          : "",
         excerpt,
       ]
         .filter(Boolean)
@@ -41,6 +45,7 @@ export function requirementParserPrompt(context: BuiltTaskContext) {
       "The JSON must include exactly these top-level keys:",
       "experiment_title, course_name, purpose, required_sections, coding_tasks, materials_needed, missing_info, risk_notes.",
       "coding_tasks must be an array of objects with: task_name, language, description, needs_screenshot, expected_output.",
+      "Set needs_screenshot=true only when the source materials explicitly ask for screenshots, running screenshots, result images, or UI screenshots.",
       "Use language='Python' unless the task explicitly says otherwise.",
     ].join("\n"),
     userPrompt: [
@@ -115,10 +120,13 @@ export function reportGeneratorPrompt(
       "Return markdown only.",
       "Do not return JSON.",
       "Do not add commentary before or after the report.",
+      "The report body and all labels inserted into DOCX must be Chinese by default.",
+      "If the source task is Chinese, do not switch to English section titles or English explanatory paragraphs.",
       "Do not invent concrete experiment data that is not supported by the materials.",
       "If data is missing, say it is based on the available materials and mark missing details conservatively.",
       "When the source materials look like a school lab-report template, follow that template closely instead of writing a generic article.",
       "Keep the report in Chinese when the source materials are in Chinese.",
+      "Use Chinese labels for evidence sections without the words 系统填写: 【代码】, 【运行结果】, 【运行截图】, 【结果分析】, 【问题及思考】, and 【截图缺失】.",
       "Include a cover-information block when the materials contain cover fields such as course, semester, college, major, class, instructor, experiment name, student name, or student number.",
       "If student name or student number is not available, leave them as clear blanks or placeholders rather than inventing them.",
       "Preserve the section order and wording from the task book/template when they are explicitly given.",

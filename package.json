@@ -9,7 +9,9 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "samples:check": "tsx src/lib/samples/sample-regression.ts --check",
+    "samples:run": "tsx src/lib/samples/sample-regression.ts --run"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",
@@ -17,11 +19,14 @@
     "@types/word-extractor": "^1.0.6",
     "clsx": "^2.1.1",
     "docx": "^9.6.1",
+    "jszip": "^3.10.1",
     "mammoth": "^1.12.0",
     "next": "^16.2.6",
     "openai": "^6.33.0",
+    "playwright": "^1.60.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "sharp": "^0.34.5",
     "word-extractor": "^1.0.4",
     "zod": "^4.3.6"
   },
@@ -33,6 +38,7 @@
     "eslint": "^9",
     "eslint-config-next": "^16.2.6",
     "tailwindcss": "^4.3.0",
+    "tsx": "^4.22.3",
     "typescript": "^5"
   },
   "overrides": {

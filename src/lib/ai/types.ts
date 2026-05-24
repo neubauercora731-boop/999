@@ -12,6 +12,16 @@ export interface TaskContextFile {
   mimeType: string | null;
   storagePath: string;
   excerpt: string | null;
+  role: string;
+  datasetPreview?: {
+    kind?: string;
+    columns?: string[];
+    rowCount?: number | null;
+    previewRows?: string[][];
+    rawTextPreview?: string;
+    delimiter?: string;
+    truncated?: boolean;
+  } | null;
 }
 
 export interface BuiltTaskContext {
@@ -24,10 +34,12 @@ export interface BuiltTaskContext {
   courseName: string | null;
   requirementText: string;
   taskBookText: string;
+  documentIngestionText: string;
   notes: string;
   templateInstructions: string;
   confirmationNotes: string;
   files: TaskContextFile[];
+  datasetSummary: string;
   parsedRequirement: ParsedRequirement | null;
   outline: OutlineDocument | null;
   reportMarkdown: string | null;

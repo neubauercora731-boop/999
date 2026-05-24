@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "allowed_kinds": ["command_output_screenshot"],
+  "expected_status": "ok",
+  "missing_behavior": "insert_missing_screenshot_marker",
+  "must_not_fake": true,
+  "minimum_metadata": [
+    "kind",
+    "status",
+    "storagePath",
+    "fileName",
+    "createdAt"
+  ]
+}

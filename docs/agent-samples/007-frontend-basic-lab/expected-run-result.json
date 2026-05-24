@@ -1,0 +1,1 @@
+{ "runner": "browser", "entryFile": "index.html", "expectedStatus": "screenshot_generated" }

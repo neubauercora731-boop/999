@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   AppFrame,
@@ -10,6 +11,7 @@ import {
   ButtonLink,
   Card,
   CardDescription,
+  CardTitle,
   HeroPanel,
   SectionHeader,
 } from "@/components/ui";
@@ -18,12 +20,12 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 type Mode = "login" | "register";
 
 const inputClassName =
-  "h-12 w-full rounded-[1.1rem] border border-[color:var(--border)] bg-white/78 px-4 text-sm text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--border-strong)] focus:ring-4 focus:ring-[color:var(--ring)]";
+  "h-12 w-full rounded-lg border border-[color:var(--border)] bg-white/82 px-4 text-sm text-[color:var(--foreground)] outline-none transition focus:border-[color:var(--border-strong)] focus:ring-4 focus:ring-[color:var(--ring)]";
 
 const trustPoints = [
-  "登录后直接进入任务工作台，不需要再学 Prompt。",
-  "分析、大纲、正文和检查都在服务端执行。",
-  "上传任务书后，系统会先判断可生成度，再给你主动作。",
+  "登录后进入任务中心，任务书、运行证据和导出记录会保存到你的账号下。",
+  "代码生成、真实运行、Trace 和 DOCX 导出都在受控工作流里完成。",
+  "系统不会把服务端密钥放到前端，也不会自动提交学校系统。",
 ];
 
 function toReadableAuthError(error: unknown) {
@@ -32,6 +34,14 @@ function toReadableAuthError(error: unknown) {
   }
 
   const message = error.message.toLowerCase();
+
+  if (message.includes("invalid login credentials")) {
+    return "邮箱或密码不正确。如果刚修改过密码，请使用最新密码重新登录。";
+  }
+
+  if (message.includes("email not confirmed")) {
+    return "邮箱还没有完成验证，请先打开注册邮件中的确认链接。";
+  }
 
   if (
     message.includes("failed to fetch") ||
@@ -50,6 +60,7 @@ function toReadableAuthError(error: unknown) {
 export const dynamic = "force-dynamic";
 
 export default function AuthPage() {
+  const router = useRouter();
   const [supabase, setSupabase] =
     useState<ReturnType<typeof createSupabaseBrowserClient> | null>(null);
   const [mode, setMode] = useState<Mode>("login");
@@ -76,9 +87,7 @@ export default function AuthPage() {
           error?: string;
         };
 
-        if (!active) {
-          return;
-        }
+        if (!active) return;
 
         if (!healthResponse.ok || !healthPayload.ok) {
           setError(
@@ -89,10 +98,7 @@ export default function AuthPage() {
         }
 
         const client = createSupabaseBrowserClient();
-
-        if (!active) {
-          return;
-        }
+        if (!active) return;
 
         setSupabase(client);
 
@@ -100,24 +106,19 @@ export default function AuthPage() {
           data: { user },
         } = await client.auth.getUser();
 
-        if (!active) {
-          return;
-        }
+        if (!active) return;
 
         if (user) {
-          window.location.replace("/tasks");
+          router.replace("/tasks");
+          router.refresh();
           return;
         }
 
         setIsCheckingSession(false);
       } catch (initializationError) {
-        if (!active) {
-          return;
-        }
+        if (!active) return;
 
-        setError(
-          toReadableAuthError(initializationError),
-        );
+        setError(toReadableAuthError(initializationError));
         setIsCheckingSession(false);
       }
     }
@@ -127,7 +128,7 @@ export default function AuthPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [router]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -146,24 +147,23 @@ export default function AuthPage() {
       const trimmedDisplayName = displayName.trim();
 
       if (mode === "register") {
-        const { data, error: signUpError } = await supabase.auth.signUp(
-          {
-            email: trimmedEmail,
-            password,
-            options: {
-              data: trimmedDisplayName ? { display_name: trimmedDisplayName } : {},
-            },
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email: trimmedEmail,
+          password,
+          options: {
+            data: trimmedDisplayName ? { display_name: trimmedDisplayName } : {},
           },
-        );
+        });
 
         if (signUpError) {
-          setError(signUpError.message);
+          setError(toReadableAuthError(signUpError));
           return;
         }
 
         if (data.session) {
-          setMessage("注册成功，正在进入任务页...");
-          window.location.replace("/tasks");
+          setMessage("注册成功，正在进入任务中心...");
+          router.replace("/tasks");
+          router.refresh();
           return;
         }
 
@@ -179,13 +179,14 @@ export default function AuthPage() {
         });
 
       if (signInError) {
-        setError(signInError.message);
+        setError(toReadableAuthError(signInError));
         return;
       }
 
       if (data.session) {
-        setMessage("登录成功，正在进入任务页...");
-        window.location.replace("/tasks");
+        setMessage("登录成功，正在进入任务中心...");
+        router.replace("/tasks");
+        router.refresh();
       }
     } catch (submitError) {
       setError(toReadableAuthError(submitError));
@@ -211,19 +212,17 @@ export default function AuthPage() {
     return (
       <AppShell>
         <div className="flex min-h-[70vh] items-center justify-center px-4">
-          <div className="w-full max-w-xl rounded-[1.75rem] border border-[color:var(--border)] bg-[color:var(--surface-solid)]/90 p-7 text-center shadow-[var(--shadow-lg)]">
-            <p className="text-xl font-semibold text-[color:var(--foreground)]">
-              登录页暂时不可用
-            </p>
-            <p className="mt-3 text-sm leading-7 text-[color:var(--muted)]">
+          <Card className="w-full max-w-xl p-7 text-center">
+            <CardTitle>登录页暂时不可用</CardTitle>
+            <CardDescription className="mt-3">
               {error || "Supabase 客户端初始化失败，请检查环境变量后重试。"}
-            </p>
+            </CardDescription>
             <div className="mt-5 flex justify-center">
-              <ButtonLink href="/demo" tone="secondary">
-                先体验 Demo
+              <ButtonLink href="/" tone="secondary">
+                返回首页
               </ButtonLink>
             </div>
-          </div>
+          </Card>
         </div>
       </AppShell>
     );
@@ -231,44 +230,45 @@ export default function AuthPage() {
 
   return (
     <AppShell>
-      <AppFrame className="grid gap-8 py-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-stretch lg:py-12">
-        <HeroPanel className="animate-rise flex min-h-[620px] flex-col justify-between">
+      <AppFrame className="grid gap-8 py-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-stretch lg:py-12">
+        <HeroPanel className="animate-rise flex min-h-[560px] flex-col justify-between">
           <div className="space-y-7">
             <div className="flex flex-wrap gap-2">
-              <Badge tone="primary">学生入口</Badge>
-              <Badge tone="accent">Moonshot</Badge>
+              <Badge tone="primary">学生工作台</Badge>
               <Badge tone="success">Supabase Auth</Badge>
+              <Badge tone="accent">任务历史保存</Badge>
             </div>
 
             <div className="space-y-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[color:var(--accent)]">
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[color:var(--accent)]">
                 Account Access
               </p>
-              <h1 className="font-display max-w-3xl text-5xl leading-[0.95] text-[color:var(--foreground)] sm:text-6xl">
-                登录后保存历史，
+              <h1 className="font-display max-w-3xl text-4xl font-semibold leading-tight text-[color:var(--foreground)] sm:text-5xl">
+                登录后继续实验任务，
                 <span className="block text-[color:var(--primary)]">
-                  也可以先体验 Demo。
+                  Trace、截图和 DOCX 都会保存。
                 </span>
               </h1>
               <p className="max-w-2xl text-sm leading-8 text-[color:var(--muted)] sm:text-base">
-                输入实验任务要求后，系统会拆解步骤、生成代码、运行验证并整理报告。登录后可以保存任务历史；未登录也可以先看一遍完整 Demo。
+                登录用于保存任务历史和导出记录。系统会把上传材料、真实运行证据、
+                截图 metadata 和 DOCX 导出状态关联到当前账号。
               </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
               <ButtonLink href="/tasks/new" size="lg">
-                开始创建任务
+                创建任务
               </ButtonLink>
-              <ButtonLink href="/demo" size="lg" tone="secondary">
-                先体验 Demo
+              <ButtonLink href="/" size="lg" tone="secondary">
+                返回首页
               </ButtonLink>
             </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
             {trustPoints.map((point, index) => (
-              <Card key={point} className="bg-white/72">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--accent)]">
+              <Card key={point} className="bg-white/76">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--accent)]">
                   0{index + 1}
                 </p>
                 <CardDescription className="mt-3 leading-7">
@@ -279,128 +279,96 @@ export default function AuthPage() {
           </div>
         </HeroPanel>
 
-        <Card className="animate-rise-delay relative overflow-hidden p-6 sm:p-8">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[color:var(--primary)] via-[color:var(--accent)] to-[color:var(--success)]" />
-
+        <Card className="animate-rise-delay p-6 sm:p-8">
           <div className="space-y-7">
             <SectionHeader
               eyebrow="Access"
               title={mode === "login" ? "登录账号" : "创建账号"}
               description={
                 mode === "login"
-                  ? "输入邮箱和密码，进入实验报告工作区。"
-                  : "创建账号后即可开始新建实验报告任务。"
+                  ? "使用邮箱和密码进入任务中心。"
+                  : "创建账号后可以保存实验任务和导出记录。"
               }
             />
 
-            <div className="rounded-full border border-[color:var(--border)] bg-white/55 p-1">
-              <div className="grid grid-cols-2 gap-1">
-                <Button
-                  tone={mode === "login" ? "primary" : "ghost"}
-                  className="w-full"
-                  onClick={() => {
-                    setError("");
-                    setMessage("");
-                    setMode("login");
-                  }}
-                >
-                  登录
-                </Button>
-                <Button
-                  tone={mode === "register" ? "primary" : "ghost"}
-                  className="w-full"
-                  onClick={() => {
-                    setError("");
-                    setMessage("");
-                    setMode("register");
-                  }}
-                >
-                  注册
-                </Button>
-              </div>
-            </div>
-
-            <form className="space-y-4" onSubmit={handleSubmit}>
+            <form className="space-y-5" onSubmit={handleSubmit}>
               {mode === "register" ? (
                 <label className="block space-y-2">
-                  <span className="text-sm font-medium text-[color:var(--foreground)]">
-                    昵称
-                  </span>
+                  <span className="text-sm font-semibold">昵称（可选）</span>
                   <input
                     className={inputClassName}
-                    type="text"
                     value={displayName}
                     onChange={(event) => setDisplayName(event.target.value)}
-                    placeholder="可选，用于资料展示"
+                    placeholder="例如：张同学"
                     autoComplete="name"
                   />
                 </label>
               ) : null}
 
               <label className="block space-y-2">
-                <span className="text-sm font-medium text-[color:var(--foreground)]">
-                  邮箱
-                </span>
+                <span className="text-sm font-semibold">邮箱</span>
                 <input
                   className={inputClassName}
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  placeholder="请输入常用邮箱"
+                  placeholder="you@example.com"
                   autoComplete="email"
                   required
                 />
               </label>
 
               <label className="block space-y-2">
-                <span className="text-sm font-medium text-[color:var(--foreground)]">
-                  密码
-                </span>
+                <span className="text-sm font-semibold">密码</span>
                 <input
                   className={inputClassName}
                   type="password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder="至少 6 位"
-                  autoComplete={
-                    mode === "login" ? "current-password" : "new-password"
-                  }
-                  minLength={6}
+                  placeholder="请输入密码"
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
                   required
                 />
               </label>
 
               {error ? (
-                <div className="rounded-[1.2rem] border border-[color:var(--danger)]/25 bg-[color:var(--danger-soft)] px-4 py-3 text-sm text-[color:var(--danger)]">
+                <div className="rounded-lg border border-[color:var(--danger)]/30 bg-[color:var(--danger-soft)] px-4 py-3 text-sm leading-6 text-[color:var(--danger)]">
                   {error}
                 </div>
               ) : null}
 
               {message ? (
-                <div className="rounded-[1.2rem] border border-[color:var(--success)]/25 bg-[color:var(--success-soft)] px-4 py-3 text-sm text-[color:var(--success)]">
+                <div className="rounded-lg border border-[color:var(--success)]/30 bg-[color:var(--success-soft)] px-4 py-3 text-sm leading-6 text-[color:var(--success)]">
                   {message}
                 </div>
               ) : null}
 
-              <Button
-                type="submit"
-                className="w-full"
-                size="lg"
-                disabled={isSubmitting}
-              >
+              <Button className="w-full" size="lg" type="submit" disabled={isSubmitting}>
                 {isSubmitting
-                  ? "处理中..."
+                  ? mode === "login"
+                    ? "登录中..."
+                    : "注册中..."
                   : mode === "login"
-                    ? "登录并进入任务页"
+                    ? "登录并进入任务中心"
                     : "创建账号"}
               </Button>
             </form>
 
-            <p className="text-xs leading-6 text-[color:var(--muted)]">
-              {mode === "login"
-                ? "还没有账号？切换到注册即可开始使用。"
-                : "如果 Supabase 开启了邮箱确认，注册后请先完成验证。"}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--border)] pt-5">
+              <p className="text-sm text-[color:var(--muted)]">
+                {mode === "login" ? "还没有账号？" : "已经有账号？"}
+              </p>
+              <Button
+                tone="ghost"
+                onClick={() => {
+                  setMode(mode === "login" ? "register" : "login");
+                  setError("");
+                  setMessage("");
+                }}
+              >
+                {mode === "login" ? "创建账号" : "返回登录"}
+              </Button>
+            </div>
           </div>
         </Card>
       </AppFrame>

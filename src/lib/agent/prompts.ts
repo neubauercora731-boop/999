@@ -18,6 +18,15 @@ function strictJsonRules() {
   ].join("\n");
 }
 
+function joinUploadedMaterials(...values: Array<string | undefined>) {
+  const joined = values
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value))
+    .join("\n\n");
+
+  return joined || "无";
+}
+
 export function buildPlanPrompt(input: {
   title: string;
   requirementText: string;
@@ -41,7 +50,7 @@ export function buildPlanPrompt(input: {
       input.requirementText || "未提供明确文字要求。",
       "",
       "上传材料摘要：",
-      input.taskBookText || input.fileSummary || "无",
+      joinUploadedMaterials(input.taskBookText, input.fileSummary),
       "",
       "用户补充说明：",
       input.notes || "无",
@@ -82,6 +91,7 @@ export function buildCodePrompt(input: {
   parsedRequirement: ParsedRequirement;
   requirementText: string;
   taskBookText?: string;
+  fileSummary?: string;
 }) {
   return {
     systemPrompt: [
@@ -90,6 +100,8 @@ export function buildCodePrompt(input: {
       "当前 P1 版本只生成 Python 单文件 main.py。",
       "Python 代码必须能直接运行。",
       "默认不要使用 input()，必须使用内置示例数据。",
+      "如果上传材料包含 CSV 等数据集文件，必须优先使用提供的真实文件名读取当前工作目录中的数据集。",
+      "处理 CSV 时优先使用 Python 标准库 csv，不要编造 CSV 内容。",
       "默认不要依赖 pandas、numpy、matplotlib、requests 等第三方库，除非任务明确要求。",
       "不要输出 markdown 代码块符号。",
       "代码必须包含 if __name__ == \"__main__\": 入口。",
@@ -108,7 +120,7 @@ export function buildCodePrompt(input: {
       input.requirementText || "无",
       "",
       "上传材料摘要：",
-      input.taskBookText || "无",
+      joinUploadedMaterials(input.taskBookText, input.fileSummary),
       "",
       "请只输出 JSON，code 字段内放完整 Python 代码。",
     ].join("\n"),
@@ -156,6 +168,8 @@ export function buildReportPrompt(input: {
   plan: TaskPlan;
   parsedRequirement: ParsedRequirement;
   generatedCode: GeneratedCode;
+  fileSummary?: string;
+  screenshotEvidenceSummary?: string;
   firstRun?: RunResult;
   debugResult?: DebugResult;
   finalRun?: RunResult;
@@ -165,9 +179,12 @@ export function buildReportPrompt(input: {
       "你是实验报告自动化助手的报告整理器。",
       strictJsonRules(),
       "报告语言必须为中文。",
+      "报告标题、章节名、截图说明、运行说明和结果分析都必须默认使用中文，除非用户原任务明确要求英文。",
+      "导出到 DOCX 的填写标签必须使用中文，且不要包含“系统填写”四个字：【代码】、【运行结果】、【运行截图】、【结果分析】、【问题及思考】、【截图缺失】。",
       "报告定位为学习辅助、代码验证和实验记录整理。",
       "报告必须基于用户要求、结构化分析、生成代码和最终运行结果。",
       "如果 stdout 存在，运行结果部分必须引用真实 stdout。",
+      "如果任务上下文包含数据集文件，报告必须写明实际使用的数据集文件名和可见字段，不要编造数据值。",
       "如果 stderr 存在但修复成功，可以在结果分析中说明初次运行有错误，系统已修复并重新运行。",
       "如果最终运行失败，必须说明失败原因，不要假装成功。",
       "如果环境不支持运行，必须说明当前环境未完成真实运行验证。",
@@ -183,6 +200,12 @@ export function buildReportPrompt(input: {
       "",
       "生成代码 JSON：",
       JSON.stringify(input.generatedCode, null, 2),
+      "",
+      "Screenshot evidence summary:",
+      input.screenshotEvidenceSummary || "none",
+      "",
+      "上传材料摘要：",
+      input.fileSummary || "无",
       "",
       "首次运行结果 JSON：",
       JSON.stringify(input.firstRun ?? null, null, 2),

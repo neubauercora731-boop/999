@@ -1,0 +1,7 @@
+{
+  "success": true,
+  "exitCode": 0,
+  "stdoutContains": "Hello Lab Report",
+  "stderrMayBeEmpty": true,
+  "runtimeMsRequired": true
+}

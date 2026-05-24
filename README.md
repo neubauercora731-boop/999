@@ -1,168 +1,118 @@
 # Lab Report Assistant
 
-面向学生的“实验报告自动化助手”MVP，基于 Next.js App Router、Supabase 和 Moonshot / Kimi API。
+面向学生实验任务的垂直 Agent 工作流系统。它不是普通聊天框，而是把“上传任务书 -> 解析任务 -> 生成代码 -> 真实运行 -> 真实截图 -> 质量检查 -> 保留原模板导出 DOCX”串成一条可追踪的交付链路。
 
-当前版本已经支持这条主链路：
+## 当前能力
 
-1. 创建任务并上传任务书、截图、数据、代码、模板
-2. 服务端调用 Moonshot 解析任务，输出结构化 `ParsedRequirement`
-3. 在分析确认页补充说明并确认
-4. 分步生成大纲
-5. 分步生成正文
-6. 独立执行一致性检查
-7. 在任务详情页查看状态、日志和结果预览
+- Supabase Auth 登录态、任务列表、新建任务和文件上传。
+- 文件角色识别：`task_book`、`report_template`、`dataset`、`screenshot`、`source_code`、`reference`、`unknown`。
+- DOC/DOCX/TXT/MD 任务书解析，CSV/XLSX 等数据集进入任务上下文。
+- AI 分析、代码生成、真实运行 Python、失败记录和一次调试入口。
+- `command_output_screenshot` 真实运行截图。
+- `browser_page_screenshot` 静态前端页面真实浏览器截图基础能力。
+- Agent trace console 和 quality evaluation。
+- `patch_original_docx` 原模板保护导出，最终 DOCX 不出现“系统填写”字样。
+- `.doc` 本地可通过 LibreOffice/soffice 转成 `.docx` baseline 后再 patch；不能安全转换时禁止伪原格式导出。
+- 样本库回归：`npm run samples:check` 和 `npm run samples:run -- --mode=local-fixture --all`。
 
 ## Tech Stack
 
-- Next.js App Router + TypeScript
-- Tailwind CSS
-- Supabase Auth + Postgres + Storage
-- Moonshot / Kimi API（兼容 OpenAI SDK 的 `chat.completions` 方式）
+- Next.js App Router + TypeScript + React 19
+- Tailwind CSS 4
+- Supabase Auth / Postgres / Storage
+- Moonshot / Kimi OpenAI-compatible chat completions
+- DOCX: `jszip`、`docx`、`mammoth`、`word-extractor`
+- Screenshots: `sharp`、`playwright`
 
 ## Local Setup
 
-1. 在项目根目录创建 `.env.local`
-2. 填写下面这些环境变量
-3. 安装依赖并运行开发环境
-
 ```bash
 npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-开发环境默认地址：`http://localhost:3000`
+开发地址：
+
+```text
+http://localhost:3000
+```
+
+本地完整运行建议：
+
+- Node.js 20+
+- Python 3，用于本地 `run-code`
+- LibreOffice/soffice，用于 `.doc -> .docx` baseline 转换
+- Playwright Chromium，用于本地浏览器截图样本
+
+```bash
+npx playwright install chromium
+```
 
 ## Environment Variables
+
+复制 `.env.example` 到 `.env.local`，本地填真实值。不要提交 `.env.local`。
 
 ```bash
 MOONSHOT_API_KEY=
 MOONSHOT_BASE_URL=https://api.moonshot.ai/v1
 MOONSHOT_MODEL=kimi-k2.5
+
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
-注意：
+安全边界：
 
-- `MOONSHOT_API_KEY` 只能放服务端环境变量，不能下发到前端
-- `SUPABASE_SERVICE_ROLE_KEY` 只能放服务端环境变量
-- 前端只使用 `NEXT_PUBLIC_SUPABASE_URL` 和 `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL` 和 `NEXT_PUBLIC_SUPABASE_ANON_KEY` 会暴露给浏览器。
+- `SUPABASE_SERVICE_ROLE_KEY` 只能放服务端环境变量，不能进入前端。
+- `MOONSHOT_API_KEY` 只能放服务端环境变量，不能进入前端。
 
 ## Supabase Setup
 
-先执行初始 migration，再执行第二轮增量 migration：
+迁移文件在 `supabase/migrations/`：
 
-- `supabase/migrations/20260402105000_init.sql`
-- `supabase/migrations/20260402143000_task_flow_v2.sql`
+- `20260402105000_init.sql`
+- `20260402143000_task_flow_v2.sql`
+- `20260430112000_python_p0_workbench.sql`
 
-这两条 migration 会创建并升级以下核心结构：
-
-- `profiles`
-- `tasks`
-- `task_inputs`
-- `task_files`
-- `task_runs`
-- `task_steps`
-- `task_outputs`
-- `billing_logs`
-
-第二轮 migration 额外补了这些关键字段：
-
-- `tasks.current_step`
-- `tasks.parsed_requirement_json`
-- `tasks.outline_json`
-- `tasks.report_markdown`
-- `tasks.analysis_status`
-- `tasks.generation_status`
-- `tasks.consistency_status`
-- `tasks.last_error`
-- `task_runs.run_no`
-- `task_runs.model_name`
-- `task_steps.started_at`
-- `task_steps.finished_at`
-
-Storage 仍使用私有 bucket：`task-files`
-
-## Moonshot / Kimi Setup
-
-本项目不使用 OpenAI Responses API、Assistants API、file search 或 code interpreter。
-
-AI 统一走服务端的 Moonshot 封装层：
-
-- `src/lib/ai/moonshot.ts`
-- `src/lib/ai/prompts.ts`
-- `src/lib/ai/types.ts`
-- `src/lib/validators/parsed-requirement.ts`
-
-默认模型：
-
-- `kimi-k2.5`
-
-默认 Base URL：
-
-- `https://api.moonshot.ai/v1`
-
-## Main Routes
-
-页面：
-
-- `/`
-- `/auth`
-- `/tasks`
-- `/tasks/new`
-- `/tasks/[id]/analysis`
-- `/tasks/[id]`
-
-接口：
-
-- `POST /api/tasks`
-- `GET /api/tasks`
-- `GET /api/tasks/[id]`
-- `POST /api/tasks/[id]/analyze`
-- `POST /api/tasks/[id]/generate-outline`
-- `POST /api/tasks/[id]/generate-report`
-- `POST /api/tasks/[id]/consistency-check`
-- `POST /api/upload`
-
-## Project Structure
+Storage bucket：
 
 ```text
-src/
-  app/
-    api/                              # Route Handlers
-    auth/                             # 登录 / 注册
-    tasks/                            # 任务列表、创建、分析确认、详情页
-  components/ui/                      # 复用 UI
-  lib/ai/                             # Moonshot 调用、Prompt、类型
-  lib/supabase/                       # Browser / Server / Admin client
-  lib/tasks/                          # 上下文组装、状态机、仓储、任务编排
-  lib/validators/                     # 服务端结构化校验
-supabase/migrations/                  # 数据库 migration
+task-files
 ```
 
-## 第二轮增量说明
+上线前请在 Supabase Dashboard 复核：
 
-本轮重点是“增量升级”，没有推翻现有项目结构，而是在原有 MVP 上补齐：
+- 所有业务表已启用 RLS。
+- `task-files` bucket 是 private。
+- Storage policy 使用 `userId/taskId` 路径隔离。
+- service role key 没有放到浏览器端。
 
-- Moonshot / Kimi AI 服务层
-- Prompt 集中管理
-- `ParsedRequirement` 结构化校验和标准化
-- `/tasks/[id]/analysis` 分析确认页
-- 大纲 / 正文 / 检查三个分步接口
-- `task_runs` / `task_steps` 运行日志
-- 任务详情页状态条、预览区和重试按钮
-- 适合后续接入 n8n 的 `task-runner` 编排边界
+## Verification
 
-核心边界文件：
+上线前至少运行：
 
-- `src/lib/tasks/context-builder.ts`
-- `src/lib/tasks/task-runner.ts`
-- `src/lib/tasks/task-status.ts`
+```bash
+npm run samples:check
+npm run samples:run -- --mode=local-fixture --all
+npm run lint
+npm run build
+```
 
-## Notes
+公开 GitHub Actions 只运行不依赖真实 Office 文档的 privacy-safe 样本子集。`014`-`017` 的 DOC/DOCX 原格式保护样本保留为本地-only fixture，避免把真实实验文档发布到公开仓库。
 
-- `npm run lint` 已通过
-- `npm run build` 已通过
-- docx / pdf 仍然是预留按钮，尚未接入真实导出逻辑
-- 如果你要继续接 n8n，推荐直接从 `src/lib/tasks/task-runner.ts` 这一层接入
+当前 `008-docx-template-edge-cases` 在样本回放中是 partial by design，不代表主流程失败。
+
+## GitHub / Vercel Notes
+
+推荐先推到 GitHub，再用 Vercel Git Integration 创建 Preview Deployment。Vercel 生产环境需要配置与 `.env.example` 对应的环境变量。
+
+注意：当前 Python runner、Playwright browser runner、LibreOffice `.doc` 转换属于 local-first 能力。在 Vercel Serverless 上不建议长期承载重型运行任务；生产化建议后续拆到 Docker Worker / VPS / Render / Railway，再由 Next.js 负责任务入口、状态查询和 DOCX 下载。
+
+详细上线清单见：
+
+- `docs/deployment/github-vercel-release-checklist.md`
+- `docs/deployment/local-backup-and-restore.md`

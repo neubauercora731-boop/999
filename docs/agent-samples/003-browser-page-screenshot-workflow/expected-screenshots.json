@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "allowed_kinds": ["browser_page_screenshot"],
+  "expected_status": "ok",
+  "missing_behavior": "insert_missing_screenshot_marker",
+  "must_not_fake": true,
+  "minimum_metadata": [
+    "type",
+    "source",
+    "storagePath",
+    "fileName",
+    "viewport",
+    "fullPage",
+    "createdAt"
+  ]
+}

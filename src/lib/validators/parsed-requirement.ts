@@ -4,7 +4,7 @@ export const codingTaskSchema = z.object({
   task_name: z.string().trim().default("Python 实验任务"),
   language: z.string().trim().default("Python"),
   description: z.string().trim().default("根据任务要求完成 Python 实验。"),
-  needs_screenshot: z.boolean().default(true),
+  needs_screenshot: z.boolean().default(false),
   expected_output: z
     .string()
     .trim()
@@ -54,7 +54,7 @@ export const parsedRequirementSchema = z
               task_name: "Python 实验任务",
               language: value.language || "Python",
               description: "根据任务要求完成 Python 实验。",
-              needs_screenshot: true,
+              needs_screenshot: false,
               expected_output:
                 value.expected_output || "运行代码并保存 stdout/stderr 作为证据。",
             },

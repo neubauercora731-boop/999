@@ -1,0 +1,1 @@
+{ "steps": ["load CSV dataset", "calculate descriptive statistics", "print results", "capture command screenshot"] }

@@ -1,0 +1,7 @@
+{
+  "required": false,
+  "allowed_kinds": [],
+  "expected_status": "not_required",
+  "missing_behavior": "not_required",
+  "must_not_fake": true
+}

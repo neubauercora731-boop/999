@@ -1,0 +1,26 @@
+{
+  "sample_id": "017-sy5-code-block-formatting-workflow",
+  "title": "sy5 sequence-list DOC code block formatting",
+  "task_type": "template_preserving_docx_fill",
+  "required_runners": ["docx_export", "quality_evaluation"],
+  "required_evidence": ["command_output_screenshot", "docx_export"],
+  "docx_mode": "patch_original_docx",
+  "must_preserve_original_docx": true,
+  "must_not_fake_screenshot": true,
+  "screenshot_policy": {
+    "required": true,
+    "allowed_kinds": ["command_output_screenshot"],
+    "missing_behavior": "insert_missing_screenshot_marker"
+  },
+  "expected_failure_behavior": {
+    "run_failed": "record_real_failure",
+    "screenshot_failed": "insert_missing_screenshot_marker",
+    "export_failed": "return_structured_error"
+  },
+  "quality_checks": {
+    "task_requirements_covered": true,
+    "code_actually_runs": true,
+    "evidence_attached_or_missing_marked": true,
+    "docx_structure_preserved": true
+  }
+}

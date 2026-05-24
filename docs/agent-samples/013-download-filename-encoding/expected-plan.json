@@ -1,0 +1,7 @@
+{
+  "steps": [
+    "create ASCII fallback filename",
+    "percent-encode UTF-8 filename*",
+    "assert Content-Disposition is ASCII-only"
+  ]
+}

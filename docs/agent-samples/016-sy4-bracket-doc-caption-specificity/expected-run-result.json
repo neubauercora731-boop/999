@@ -1,0 +1,11 @@
+{
+  "exitCode": 0,
+  "stdoutMustContain": [
+    "字符串1",
+    "字符串2",
+    "字符串3",
+    "匹配结果"
+  ],
+  "stderr": "",
+  "runtimeRequired": true
+}

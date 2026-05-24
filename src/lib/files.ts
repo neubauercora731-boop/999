@@ -39,6 +39,9 @@ const DOC_MIME_TYPES = new Set([
 const DEFAULT_TEXT_EXTRACTION_LIMIT = 16_000;
 const wordExtractor = new WordExtractor();
 
+// Upload-time extraction is intentionally lightweight. It creates a quick
+// parsed_text/text_excerpt fallback, while the full document-ingestion workflow
+// owns structured AI parsing, parser metadata, and user-confirmed handoff.
 function getLowercaseExtension(fileName: string) {
   const lastDotIndex = fileName.lastIndexOf(".");
 
@@ -122,7 +125,12 @@ export function createFileChecksum(bytes: Uint8Array) {
 
 export interface FileTextExtractionResult {
   text: string | null;
-  method: "docx_mammoth" | "doc_word_extractor" | "plain_text" | "unavailable";
+  method:
+    | "docx_mammoth"
+    | "docx_word_extractor"
+    | "doc_word_extractor"
+    | "plain_text"
+    | "unavailable";
 }
 
 export async function extractTextExcerpt(
@@ -133,10 +141,19 @@ export async function extractTextExcerpt(
 ): Promise<FileTextExtractionResult> {
   try {
     if (isDocxFile(fileName, mimeType)) {
-      const extracted = await extractDocxText(bytes);
+      let extracted: string;
+      let method: FileTextExtractionResult["method"] = "docx_mammoth";
+
+      try {
+        extracted = await extractDocxText(bytes);
+      } catch {
+        extracted = await extractDocText(bytes);
+        method = "docx_word_extractor";
+      }
+
       return {
         text: normalizeExtractedText(extracted, maxLength),
-        method: "docx_mammoth",
+        method,
       };
     }
 

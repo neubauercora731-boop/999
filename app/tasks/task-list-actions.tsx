@@ -22,7 +22,9 @@ export function TaskListActions({
   const [error, setError] = useState<string | null>(null);
 
   async function deleteTask() {
-    const confirmed = window.confirm(`确定删除“${taskTitle}”吗？删除后任务历史不可恢复。`);
+    const confirmed = window.confirm(
+      `确定删除“${taskTitle}”吗？删除后任务历史不可恢复。`,
+    );
     if (!confirmed) return;
 
     setDeleting(true);
@@ -45,22 +47,22 @@ export function TaskListActions({
       <div className="mt-auto flex flex-wrap gap-3">
         <Link
           href={`/tasks/${taskId}`}
-          className="inline-flex h-11 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--primary),var(--primary-deep))] px-5 text-sm font-medium text-white transition hover:-translate-y-0.5"
+          className="inline-flex h-11 items-center justify-center rounded-full bg-[color:var(--primary)] px-5 text-sm font-medium text-white transition hover:bg-[color:var(--primary-deep)]"
         >
-          查看详情
+          进入工作台
         </Link>
         <Link
           href={`/tasks/${taskId}/analysis`}
-          className="inline-flex h-11 items-center justify-center rounded-full border border-[color:var(--border-strong)] bg-white/75 px-5 text-sm font-medium transition hover:bg-white"
+          className="inline-flex h-11 items-center justify-center rounded-full border border-[color:var(--border-strong)] bg-white/80 px-5 text-sm font-medium transition hover:bg-white"
         >
-          解析确认
+          查看解析
         </Link>
         <Button tone="danger" onClick={deleteTask} disabled={deleting}>
           {deleting ? "删除中..." : "删除任务"}
         </Button>
       </div>
       {error ? (
-        <p className="rounded-[1rem] border border-[color:var(--danger)]/30 bg-[color:var(--danger-soft)] px-4 py-3 text-sm text-[color:var(--danger)]">
+        <p className="rounded-lg border border-[color:var(--danger)]/30 bg-[color:var(--danger-soft)] px-4 py-3 text-sm text-[color:var(--danger)]">
           {error}
         </p>
       ) : null}

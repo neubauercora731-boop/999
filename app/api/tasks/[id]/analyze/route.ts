@@ -23,6 +23,12 @@ export async function POST(_request: Request, context: RouteContext) {
     const parsedRequirement = await analyzeTask(supabase, user.id, id);
     return NextResponse.json({ parsedRequirement });
   } catch (error) {
+    console.error("task_analyze_failed", {
+      message: error instanceof Error ? error.message : "unknown_error",
+      name: error instanceof Error ? error.name : null,
+      status: getErrorStatus(error, 400),
+    });
+
     return NextResponse.json(
       { error: toErrorMessage(error) || "任务分析失败，请稍后重试。" },
       { status: getErrorStatus(error, 400) },

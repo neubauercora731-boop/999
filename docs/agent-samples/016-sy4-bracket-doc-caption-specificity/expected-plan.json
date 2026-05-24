@@ -1,0 +1,10 @@
+{
+  "steps": [
+    "parse teacher task book",
+    "generate Python linked-stack bracket matcher",
+    "run real code",
+    "generate command_output_screenshot",
+    "patch original DOCX package",
+    "validate original snippets and screenshot insertion"
+  ]
+}

@@ -1,0 +1,1 @@
+{ "steps": ["generate Python list sum code", "run code", "save stdout/stderr/exitCode/runtime", "do not force screenshot"] }

@@ -1,0 +1,8 @@
+{
+  "steps": [
+    "generate static HTML/CSS/JS files",
+    "render index.html in an isolated browser context",
+    "capture a real browser_page_screenshot",
+    "insert screenshot or missing marker into DOCX"
+  ]
+}

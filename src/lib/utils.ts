@@ -44,6 +44,14 @@ export function toUserFriendlyErrorMessage(
   const rawMessage = toErrorMessage(error);
   const message = rawMessage.toLowerCase();
 
+  if (
+    message.includes("bytestring") ||
+    message.includes("greater than 255") ||
+    message.includes("cannot convert argument to a bytestring")
+  ) {
+    return "导出失败：下载文件名编码错误，系统已阻止错误响应。";
+  }
+
   if (message in AGENT_ERROR_MESSAGES) {
     return AGENT_ERROR_MESSAGES[message as keyof typeof AGENT_ERROR_MESSAGES];
   }
@@ -191,21 +199,47 @@ export async function getApiErrorMessage(
   response: Response,
   fallbackMessage: string,
 ) {
-  const payload = await readJsonSafely<{ error?: string; message?: string }>(
+  const payload = await readJsonSafely<{
+    error?: string;
+    message?: string;
+    code?: string;
+    quality?: { blockingIssues?: unknown; warnings?: unknown };
+    warnings?: unknown;
+  }>(
     response.clone(),
   );
 
-  if (payload?.error) {
-    return payload.error;
-  }
+  if (payload) {
+    const summary =
+      payload.message ||
+      payload.error ||
+      (payload.code === "QUALITY_GATE_FAILED"
+        ? "质量检查未通过，暂不能导出。"
+        : fallbackMessage);
+    const blockingIssues = Array.isArray(payload.quality?.blockingIssues)
+      ? payload.quality.blockingIssues
+      : [];
+    const warnings = Array.isArray(payload.warnings)
+      ? payload.warnings
+      : Array.isArray(payload.quality?.warnings)
+        ? payload.quality.warnings
+        : [];
+    const details = [...blockingIssues, ...warnings]
+      .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      .slice(0, 5);
 
-  if (payload?.message) {
-    return payload.message;
+    return details.length ? `${summary}\n${details.map((item) => `- ${item}`).join("\n")}` : summary;
   }
 
   try {
     const text = (await response.text()).trim();
-    return text || fallbackMessage;
+    if (!text) return fallbackMessage;
+    try {
+      const parsed = JSON.parse(text) as { error?: string; message?: string; code?: string };
+      return parsed.message || parsed.error || parsed.code || fallbackMessage;
+    } catch {
+      return text.length > 300 ? `${text.slice(0, 300)}...` : text;
+    }
   } catch {
     return fallbackMessage;
   }

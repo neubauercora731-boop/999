@@ -1,0 +1,69 @@
+{
+  "id": "document_ingestion_workflow",
+  "name": "Document Ingestion Workflow",
+  "description": "Turn uploaded task-book documents into normalized text and structured task requirements before handing off to the lab-report agent workflow.",
+  "matchKeywords": [
+    "docx",
+    "doc",
+    "txt",
+    "md",
+    "Word",
+    "任务书",
+    "实验要求",
+    "文档解析",
+    "多文件上传"
+  ],
+  "requiredSteps": [
+    "detect_file_type",
+    "infer_file_role",
+    "select_task_book",
+    "extract_raw_text",
+    "fallback_extract_with_word_extractor",
+    "normalize_text",
+    "call_moonshot_structure",
+    "extract_json_from_model_text",
+    "normalize_structured_task",
+    "fallback_structured_task",
+    "save_task_input",
+    "handoff_to_agent_analyze"
+  ],
+  "llmSteps": [
+    "call_moonshot_structure",
+    "extract explicit requirements",
+    "extract implicit requirements",
+    "extract missing information",
+    "extract risk notes"
+  ],
+  "toolSteps": [
+    "filename and extension role inference",
+    "Supabase Storage download",
+    "mammoth.extractRawText",
+    "word-extractor fallback",
+    "TextDecoder for txt/md",
+    "Zod schema validation",
+    "Supabase metadata update"
+  ],
+  "userConfirmSteps": [
+    "select task-book file when multiple files exist",
+    "confirm low-confidence file role",
+    "confirm structured task preview",
+    "confirm handoff to analyze"
+  ],
+  "qualityRules": [
+    "Do not execute uploaded document macros or scripts.",
+    "Do not fake document contents.",
+    "Do not fake stdout, stderr, screenshots, or runtime results.",
+    "Do not parse datasets, screenshots, or source code as task books by default.",
+    "Unsupported file types must return clear Chinese messages.",
+    "AI structure failures should produce warnings and deterministic fallback, not a hard 502 when usable text exists.",
+    "Service-role keys and Moonshot keys must stay server-side only."
+  ],
+  "failureHandling": [
+    "FILE_NOT_FOUND",
+    "UNSUPPORTED_FILE_TYPE",
+    "EXTRACT_TEXT_FAILED",
+    "EMPTY_DOCUMENT_TEXT",
+    "AI_STRUCTURE_FAILED_WITH_FALLBACK",
+    "SAVE_PARSE_RESULT_FAILED"
+  ]
+}

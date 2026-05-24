@@ -1,0 +1,11 @@
+{
+  "workflowType": "python_algorithm_lab",
+  "steps": [
+    "parse original DOC/DOCX task book",
+    "generate Huffman implementation",
+    "run Python code",
+    "generate command_output_screenshot",
+    "patch original document sections",
+    "validate preservation"
+  ]
+}
